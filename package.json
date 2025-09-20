@@ -1,0 +1,27 @@
+{
+  "name": "esg-mvp",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev:web": "pnpm --filter ./apps/web dev",
+    "dev:api": "pnpm --filter ./apps/api dev",
+    "dev": "pnpm -r --parallel dev",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "sqitch:deploy:esg": "sqitch deploy db:pg://postgres:esg@localhost:5432/esg-os",
+    "sqitch:verify:esg": "sqitch verify db:pg://postgres:esg@localhost:5432/esg-os",
+    "worker:install": "cross-env DATABASE_URL=postgres://postgres:esg@localhost:5432/esg-os graphile-worker --schema-only",
+    "worker:run": "cross-env DATABASE_URL=postgres://postgres:esg@localhost:5432/esg-os pnpm --filter @jobs/worker run",
+    "worker:once": "cross-env DATABASE_URL=postgres://postgres:esg@localhost:5432/esg-os pnpm --filter @jobs/worker once",
+    "sqitch:deploy:docker": "powershell.exe -NoProfile -Command \"$p=(Get-Location).Path; docker run --rm --network docker_default -e PGPASSWORD=esg -v \"$p/sql:/work/sql\" -w /work/sql sqitch/sqitch deploy db:pg://postgres:esg@esg_db:5432/esg-os\"",
+    "sqitch:verify:docker": "powershell.exe -NoProfile -Command \"$p=(Get-Location).Path; docker run --rm --network docker_default -e PGPASSWORD=esg -v \"$p/sql:/work/sql\" -w /work/sql sqitch/sqitch verify db:pg://postgres:esg@esg_db:5432/esg-os\""
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.3"
+  },
+  "dependencies": {
+    "graphile-worker": "^0.16.6"
+  }
+}

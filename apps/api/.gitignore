@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.tsbuildinfo
+.eslintcache
+coverage/
+*.log
+.env
+.env.*
+/.idea/
+/.vscode/
+/.cache/
+

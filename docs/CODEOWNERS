@@ -1,0 +1,24 @@
+# CODEOWNERS — v1.0.0
+# Replace @handles with real GitHub usernames or team slugs (e.g., @org/backend)
+
+# Global owners
+*                                   @founder @pm
+
+# Apps
+/apps/api/**                        @backend @security
+/apps/web/**                        @frontend @design
+/apps/ai/**                         @ml
+
+# Jobs & SQL
+/jobs/**                            @backend
+/sql/**                             @backend @dba
+
+# Libraries
+/libs/rules/**                      @esg-advisor @backend
+/libs/ui/**                         @frontend
+
+# DevOps / Infra / Security
+/docker/**                          @devops
+/infra/**                           @devops
+/docs/**                            @pm @security
+.github/**                          @pm @devops

@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+.vercel/
+.swc/
+.eslintcache
+.tsbuildinfo
+coverage/
+*.log
+.env
+.env.*
+/.idea/
+/.vscode/
+/.cache/
+playwright-report/
+test-results/
+

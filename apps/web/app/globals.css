@@ -1,0 +1,10 @@
+:root { color-scheme: dark; }
+a { color: #7aa2ff; text-decoration: none; }
+label { display:block; margin: 10px 0 4px;}
+input, select, button, textarea {
+  background:#0f1630; color:#eaeefb; border:1px solid #233; border-radius:8px; padding:8px 10px;
+}
+button { cursor:pointer; }
+[data-test] { outline: none; }
+
+

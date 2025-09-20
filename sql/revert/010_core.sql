@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS esg.entities CASCADE;
+DROP TYPE IF EXISTS esg.entity_type;
+DROP TABLE IF EXISTS esg.users CASCADE;
+DROP TABLE IF EXISTS esg.metrics CASCADE;
+
+
