@@ -20,4 +20,9 @@ Precedence:
 Usage:
 - Tools that support .mdc rules can load the entire `rules/` directory to enforce guardrails across the monorepo.
 
+Also see:
+- Root-level execution docs: `PRD.md`, `Progress.md`, `architecture.md`, `run_book.md`
+- ADRs: `docs/ADR/`
+- Feature PRDs (optional): `docs/PRD/`
+
 

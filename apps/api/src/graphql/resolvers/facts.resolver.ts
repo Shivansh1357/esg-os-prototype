@@ -1,5 +1,4 @@
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Inject, Req } from '@nestjs/common';
+import { Args, Context, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Request } from 'express';
 import { pgClientFrom } from '../../db/reqpg';
 import { UpsertFactInput, Fact } from '../schema.gql';
@@ -8,8 +7,6 @@ import { getDefaultFactorSetId } from '../../db/factors';
 
 @Resolver()
 export class FactsResolver {
-  constructor(@Inject('REQUEST') private readonly _r?: Request) {}
-
   @Query(() => [Fact])
   async listFacts(
     @Args('entityId', {nullable:true}) entityId?: string,
@@ -17,9 +14,9 @@ export class FactsResolver {
     @Args('status', {nullable:true}) status?: string,
     @Args('periodStart', {nullable:true}) periodStart?: string,
     @Args('periodEnd', {nullable:true}) periodEnd?: string,
-    @Req() req?: Request
+    @Context() ctx?: { req: Request }
   ) {
-    const client = pgClientFrom(req!);
+    const client = pgClientFrom(ctx?.req as Request);
     const conds: string[] = ['tenant_id = app.current_tenant()'];
     const params: any[] = [];
     let i = 0;
@@ -54,8 +51,11 @@ export class FactsResolver {
   }
 
   @Mutation(() => String)
-  async upsertFact(@Args('input', { type: () => UpsertFactInput }) input: UpsertFactInput, @Req() req?: Request) {
-    const client = pgClientFrom(req!);
+  async upsertFact(
+    @Args('input', { type: () => UpsertFactInput }) input: UpsertFactInput,
+    @Context() ctx?: { req: Request }
+  ) {
+    const client = pgClientFrom(ctx?.req as Request);
     const t = await client.query(`SELECT current_setting('app.tenant_id', true) AS t, current_setting('app.user_id', true) AS u`);
     const tenant = t.rows[0].t; const actor = t.rows[0].u;
     const sql = `SELECT esg.upsert_fact($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) AS id`;
@@ -65,8 +65,8 @@ export class FactsResolver {
   }
 
   @Mutation(() => Boolean)
-  async approveFact(@Args('id', { type: () => ID }) id: string, @Req() req?: Request) {
-    const client = pgClientFrom(req!);
+  async approveFact(@Args('id', { type: () => ID }) id: string, @Context() ctx?: { req: Request }) {
+    const client = pgClientFrom(ctx?.req as Request);
     const sel = await client.query(
       `SELECT id, status, entity_id, period_start, period_end
          FROM esg.facts WHERE id = $1 AND tenant_id = app.current_tenant() FOR UPDATE`,

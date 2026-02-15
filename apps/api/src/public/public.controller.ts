@@ -14,8 +14,8 @@ export class PublicController {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.tenant_id = $1`, [c.tid]);
-      await client.query(`SET LOCAL app.user_id = $1`, [`SUPPLIER:${c.sid}`]);
+      await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [c.tid]);
+      await client.query(`SELECT set_config('app.user_id', $1, true)`, [`SUPPLIER:${c.sid}`]);
       const s = await client.query(
         `SELECT name, email, category, spend FROM esg.suppliers WHERE id=$1 AND tenant_id=app.current_tenant()`,
         [c.sid]
@@ -32,8 +32,8 @@ export class PublicController {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.tenant_id = $1`, [c.tid]);
-      await client.query(`SET LOCAL app.user_id = $1`, [`SUPPLIER:${c.sid}`]);
+      await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [c.tid]);
+      await client.query(`SELECT set_config('app.user_id', $1, true)`, [`SUPPLIER:${c.sid}`]);
       if (body.evidenceUrl) {
         const v = await client.query(`SELECT esg.validate_evidence_url($1) ok`, [body.evidenceUrl]);
         if (!v.rows[0]?.ok) throw new Error('Invalid evidence URL');

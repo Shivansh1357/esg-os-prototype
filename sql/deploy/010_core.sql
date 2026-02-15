@@ -41,11 +41,39 @@ CREATE TABLE IF NOT EXISTS esg.metrics (
 ALTER TABLE esg.users    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE esg.entities ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS users_tenant_isolation ON esg.users
-USING (tenant_id = app.current_tenant());
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='users' AND policyname='users_tenant_read'
+  ) THEN
+    CREATE POLICY users_tenant_read ON esg.users
+      FOR SELECT USING (tenant_id = app.current_tenant());
+  END IF;
 
-CREATE POLICY IF NOT EXISTS entities_tenant_isolation ON esg.entities
-USING (tenant_id = app.current_tenant());
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='users' AND policyname='users_tenant_write'
+  ) THEN
+    CREATE POLICY users_tenant_write ON esg.users
+      FOR ALL USING (tenant_id = app.current_tenant())
+      WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='entities' AND policyname='entities_tenant_read'
+  ) THEN
+    CREATE POLICY entities_tenant_read ON esg.entities
+      FOR SELECT USING (tenant_id = app.current_tenant());
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='entities' AND policyname='entities_tenant_write'
+  ) THEN
+    CREATE POLICY entities_tenant_write ON esg.entities
+      FOR ALL USING (tenant_id = app.current_tenant())
+      WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
 
 -- For admins: we’ll gate writes via application role, keep RLS simple:
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA esg TO PUBLIC; -- restricted by RLS

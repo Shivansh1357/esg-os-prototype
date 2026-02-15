@@ -21,8 +21,8 @@ export class AuditorPublicController {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.tenant_id = $1`, [c.tid]);
-      await client.query(`SET LOCAL app.user_id = $1`, ['AUDITOR']);
+      await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [c.tid]);
+      await client.query(`SELECT set_config('app.user_id', $1, true)`, ['AUDITOR']);
       const res = await client.query(`SELECT esg.report_lineage($1,$2) j`, [c.tid, c.rid]);
       await client.query('ROLLBACK');
       return res.rows[0].j;
@@ -35,8 +35,8 @@ export class AuditorPublicController {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.tenant_id = $1`, [c.tid]);
-      await client.query(`SET LOCAL app.user_id = $1`, ['AUDITOR']);
+      await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [c.tid]);
+      await client.query(`SELECT set_config('app.user_id', $1, true)`, ['AUDITOR']);
       const { rows:[{ j }] } = await client.query(`SELECT esg.report_lineage($1,$2) j`, [c.tid, c.rid]);
       const key = `assurance/${c.tid}/${c.rid}/${Date.now()}.xlsx`;
       const buf = await buildAssuranceWorkbook(j);

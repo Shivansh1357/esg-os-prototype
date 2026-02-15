@@ -23,22 +23,25 @@ CREATE OR REPLACE FUNCTION esg.exec_kpis(
   _pend   date
 ) RETURNS jsonb
 LANGUAGE plpgsql AS $$
-DECLARE ctx_tenant uuid := current_setting('app.tenant_id', true)::uuid; fs record; cur record; prev record;
+DECLARE ctx_tenant uuid := current_setting('app.tenant_id', true)::uuid; factor_set record; cur record; prev record;
         prev_start date := esg.q_prev_start(_pstart); prev_end date := esg.q_end(prev_start);
         comp record; cov jsonb; approved_count int;
 BEGIN
   IF ctx_tenant IS NULL OR ctx_tenant <> _tenant THEN
     RAISE EXCEPTION 'tenant context mismatch' USING ERRCODE = '28000';
   END IF;
-  SELECT td.factor_set_id AS id, fs.code, fs.version INTO fs
-  FROM esg.tenant_defaults td JOIN esg.factor_sets fs ON fs.id=td.factor_set_id
+  SELECT td.factor_set_id AS id, fset.code, fset.version INTO factor_set
+  FROM esg.tenant_defaults td JOIN esg.factor_sets fset ON fset.id = td.factor_set_id
   WHERE td.tenant_id=_tenant LIMIT 1;
+  IF factor_set.id IS NULL THEN
+    RAISE EXCEPTION 'tenant default factor set missing for tenant %', _tenant;
+  END IF;
   SELECT COALESCE(SUM(scope1),0) AS s1, COALESCE(SUM(scope2_loc),0) AS s2_loc, COALESCE(SUM(scope2_mkt),0) AS s2_mkt, COALESCE(SUM(scope3),0) AS s3
     INTO cur FROM esg.emission_totals
-   WHERE tenant_id=_tenant AND period_start=_pstart AND period_end=_pend AND factor_set_id = fs.id;
+   WHERE tenant_id=_tenant AND period_start=_pstart AND period_end=_pend AND factor_set_id = factor_set.id;
   SELECT COALESCE(SUM(scope1),0) AS s1, COALESCE(SUM(scope2_loc),0) AS s2_loc, COALESCE(SUM(scope2_mkt),0) AS s2_mkt, COALESCE(SUM(scope3),0) AS s3
     INTO prev FROM esg.emission_totals
-   WHERE tenant_id=_tenant AND period_start=prev_start AND period_end=prev_end AND factor_set_id = fs.id;
+   WHERE tenant_id=_tenant AND period_start=prev_start AND period_end=prev_end AND factor_set_id = factor_set.id;
   SELECT SUM((status='PASS')::int) AS pass, SUM((status='FAIL')::int) AS fail, SUM((status='RISK')::int) AS risk, COUNT(*) AS total
     INTO comp FROM esg.compliance_findings
    WHERE tenant_id=_tenant AND period_start=_pstart AND period_end=_pend;
@@ -63,7 +66,7 @@ BEGIN
     ),
     'suppliers', cov,
     'approvedFacts', approved_count,
-    'factorSet', jsonb_build_object('id', fs.id, 'code', fs.code, 'version', fs.version),
+    'factorSet', jsonb_build_object('id', factor_set.id, 'code', factor_set.code, 'version', factor_set.version),
     'at', now()
   );
 END $$;

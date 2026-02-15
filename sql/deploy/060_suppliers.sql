@@ -49,9 +49,17 @@ ALTER TABLE esg.suppliers           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE esg.supplier_invites    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE esg.supplier_responses  ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS suppliers_rls   ON esg.suppliers          FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
-CREATE POLICY IF NOT EXISTS invites_rls     ON esg.supplier_invites   FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
-CREATE POLICY IF NOT EXISTS responses_rls   ON esg.supplier_responses FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='suppliers' AND policyname='suppliers_rls') THEN
+    CREATE POLICY suppliers_rls   ON esg.suppliers          FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='supplier_invites' AND policyname='invites_rls') THEN
+    CREATE POLICY invites_rls     ON esg.supplier_invites   FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='supplier_responses' AND policyname='responses_rls') THEN
+    CREATE POLICY responses_rls   ON esg.supplier_responses FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
 
 CREATE OR REPLACE FUNCTION esg.touch_updated_at() RETURNS trigger
 LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at := now(); RETURN NEW; END $$;

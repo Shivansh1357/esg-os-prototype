@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: esg
-      POSTGRES_DB: postgres
+      POSTGRES_DB: esg-os
     ports: ["5432:5432"]
     volumes:
       - ./initdb:/docker-entrypoint-initdb.d

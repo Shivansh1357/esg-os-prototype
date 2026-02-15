@@ -1,12 +1,13 @@
 import { Pool } from 'pg';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const connectionString = process.env.DATABASE_URL ?? 'postgres://postgres:esg@localhost:5432/esg-os';
+const pool = new Pool({ connectionString });
 
 async function withCtx<T>(tenant: string, user: string, fn: (c: any)=>Promise<T>){
   const c = await pool.connect();
   try{ await c.query('BEGIN');
-       await c.query('SET LOCAL app.tenant_id = $1', [tenant]);
-       await c.query('SET LOCAL app.user_id = $1', [user]);
+       await c.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenant]);
+       await c.query(`SELECT set_config('app.user_id', $1, true)`, [user]);
        const out = await fn(c);
        await c.query('ROLLBACK'); return out;
   } finally { c.release(); }
@@ -14,6 +15,10 @@ async function withCtx<T>(tenant: string, user: string, fn: (c: any)=>Promise<T>
 
 describe('BRSR evaluate + resolve', () => {
   let tenant: string, entity: string;
+
+  afterAll(async () => {
+    await pool.end();
+  });
 
   beforeAll(async () => {
     const c = await pool.connect();
@@ -39,20 +44,14 @@ describe('BRSR evaluate + resolve', () => {
       );
       const s = await c.query(`SELECT esg.evaluate_brsr($1,$2,$3) summary`, [tenant, p0, p1]);
       expect(s.rows[0].summary.total).toBeDefined();
-    });
-
-    const finding = await withCtx(tenant, user, async (c) => {
-      const r = await c.query(
+      const findingRow = await c.query(
         `SELECT id, status FROM esg.compliance_findings
           WHERE tenant_id=$1 AND period_start=$2 AND period_end=$3 AND rule_code='BRSR-02'`,
         [tenant, p0, p1]
       );
-      expect(r.rowCount).toBe(1);
-      expect(r.rows[0].status).toBe('FAIL');
-      return r.rows[0].id as string;
-    });
-
-    await withCtx(tenant, user, async (c) => {
+      expect(findingRow.rowCount).toBe(1);
+      expect(findingRow.rows[0].status).toBe('FAIL');
+      const finding = findingRow.rows[0].id as string;
       await c.query(
         `UPDATE esg.compliance_findings
             SET evidence_url=$1, status='PASS', reason='Evidence provided'
@@ -60,8 +59,8 @@ describe('BRSR evaluate + resolve', () => {
         ['s3://uploads/bill.pdf', finding]
       );
       await c.query(`SELECT esg.evaluate_brsr($1,$2,$3)`, [tenant, p0, p1]);
-      const r = await c.query(`SELECT status FROM esg.compliance_findings WHERE id=$1`, [finding]);
-      expect(r.rows[0].status).toBe('PASS');
+      const statusRow = await c.query(`SELECT status FROM esg.compliance_findings WHERE id=$1`, [finding]);
+      expect(statusRow.rows[0].status).toBe('PASS');
     });
   });
 });

@@ -35,10 +35,16 @@ CREATE TABLE IF NOT EXISTS esg.emission_totals (
 );
 
 ALTER TABLE esg.emission_totals ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS totals_tenant_read ON esg.emission_totals
-  FOR SELECT USING (tenant_id = app.current_tenant());
-CREATE POLICY IF NOT EXISTS totals_tenant_write ON esg.emission_totals
-  FOR ALL     USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='emission_totals' AND policyname='totals_tenant_read') THEN
+    CREATE POLICY totals_tenant_read ON esg.emission_totals
+      FOR SELECT USING (tenant_id = app.current_tenant());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='emission_totals' AND policyname='totals_tenant_write') THEN
+    CREATE POLICY totals_tenant_write ON esg.emission_totals
+      FOR ALL     USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
 
 -- ========= Tenant default factor set =========
 CREATE TABLE IF NOT EXISTS esg.tenant_defaults (
@@ -86,7 +92,7 @@ BEGIN
     RAISE EXCEPTION 'tenant context mismatch' USING ERRCODE = '28000';
   END IF;
 
-  SELECT k1,k2 INTO k1,k2 FROM esg.calc_lock_keys(_tenant,_entity,_pstart,_pend);
+  SELECT lk.k1, lk.k2 INTO k1, k2 FROM esg.calc_lock_keys(_tenant,_entity,_pstart,_pend) lk;
   PERFORM pg_advisory_lock(k1, k2);
 
   SELECT coalesce(sum(f.value * ef.loc_kgco2e_per_unit),0)

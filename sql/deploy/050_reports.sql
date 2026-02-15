@@ -38,9 +38,17 @@ ALTER TABLE esg.reports          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE esg.report_sections  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE esg.report_artifacts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS reports_rls   ON esg.reports          FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
-CREATE POLICY IF NOT EXISTS sections_rls  ON esg.report_sections  FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
-CREATE POLICY IF NOT EXISTS artifacts_rls ON esg.report_artifacts FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='reports' AND policyname='reports_rls') THEN
+    CREATE POLICY reports_rls   ON esg.reports          FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='report_sections' AND policyname='sections_rls') THEN
+    CREATE POLICY sections_rls  ON esg.report_sections  FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='report_artifacts' AND policyname='artifacts_rls') THEN
+    CREATE POLICY artifacts_rls ON esg.report_artifacts FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
 
 CREATE OR REPLACE FUNCTION esg.touch_updated_at() RETURNS trigger
 LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at := now(); RETURN NEW; END $$;
@@ -56,12 +64,12 @@ CREATE TRIGGER trg_sections_touch BEFORE UPDATE ON esg.report_sections
 CREATE OR REPLACE FUNCTION esg.default_report_period(_tenant uuid)
 RETURNS TABLE (period_start date, period_end date)
 LANGUAGE plpgsql AS $$
-DECLARE p0 date; p1 date;
+DECLARE p_start date; p_end date;
 BEGIN
-  SELECT max(period_start) INTO p0 FROM esg.emission_totals WHERE tenant_id=_tenant;
-  IF p0 IS NULL THEN p0 := date_trunc('quarter', now())::date; END IF;
-  p1 := (date_trunc('quarter', p0) + interval '3 months' - interval '1 day')::date;
-  RETURN QUERY SELECT p0, p1;
+  SELECT max(t.period_start) INTO p_start FROM esg.emission_totals t WHERE t.tenant_id = _tenant;
+  IF p_start IS NULL THEN p_start := date_trunc('quarter', now())::date; END IF;
+  p_end := (date_trunc('quarter', p_start) + interval '3 months' - interval '1 day')::date;
+  RETURN QUERY SELECT p_start, p_end;
 END $$;
 
 

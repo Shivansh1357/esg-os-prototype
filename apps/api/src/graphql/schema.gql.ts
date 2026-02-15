@@ -55,7 +55,6 @@ export class RootResolver {
   @Query(() => [Metric]) async listMetrics(@Args('search', {nullable:true}) _search?: string) {
     return [];
   }
-  @Query(() => [Fact]) async listFacts() { return []; }
   @Query(() => EmissionTotals, {nullable:true})
   async getTotals(
     @Args('entityId') entityId: string,
@@ -78,8 +77,6 @@ export class RootResolver {
     return { scope1: r.rows[0].scope1 ?? null, scope2_loc: r.rows[0].scope2_loc ?? null, scope2_mkt: r.rows[0].scope2_mkt ?? null, scope3: r.rows[0].scope3 ?? null };
   }
   // gapMap implemented in ComplianceResolver
-  @Mutation(() => String) async upsertFact(@Args('input') _input: UpsertFactInput) { return 'stub'; }
-  @Mutation(() => Boolean) async approveFact(@Args('id') _id: string) { return true; }
   @Mutation(() => Boolean)
   async setDefaultFactorSet(@Args('id') factorSetId: string, @Context() ctx?: { req: Request; res?: any }) {
     const req = ctx?.req as Request | undefined;
@@ -115,7 +112,6 @@ export class RootResolver {
     return true;
   }
   // resolveGap implemented in ComplianceResolver
-  @Mutation(() => String) async createReport(@Args('name') _n: string, @Args('template') _t: string) { return 'stub'; }
 }
 
 @Module({

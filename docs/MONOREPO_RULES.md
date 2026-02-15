@@ -20,7 +20,7 @@ docs/         # This folder (rules, policies)
 ```
 
 - Each top-level directory MUST have an **owner** (CODEOWNERS) and a **README.md**.
-- Every new subsystem requires an **ADR** under `docs/adr/`.
+- Every new subsystem requires an **ADR** under `docs/ADR/`.
 
 ## 2) Versioning & Branching
 

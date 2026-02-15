@@ -1,5 +1,4 @@
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Req } from '@nestjs/common';
+import { Args, Context, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Request } from 'express';
 import { pgClientFrom } from '../../db/reqpg';
 import { Finding } from '../schema.gql';
@@ -10,9 +9,9 @@ export class ComplianceResolver {
   async gapMap(
     @Args('periodStart') periodStart: string,
     @Args('periodEnd') periodEnd: string,
-    @Req() req: Request
+    @Context() ctx?: { req: Request }
   ) {
-    const client = pgClientFrom(req);
+    const client = pgClientFrom(ctx?.req as Request);
     const r = await client.query(
       `SELECT id, rule_code, status::text AS status, severity, reason, evidence_url, owner, due_date
          FROM esg.compliance_findings
@@ -36,9 +35,9 @@ export class ComplianceResolver {
   async resolveGap(
     @Args('id') id: string,
     @Args('evidenceUrl') evidenceUrl: string,
-    @Req() req: Request
+    @Context() ctx?: { req: Request }
   ) {
-    const client = pgClientFrom(req);
+    const client = pgClientFrom(ctx?.req as Request);
     const v = await client.query(`SELECT esg.validate_evidence_url($1) AS ok`, [evidenceUrl]);
     if (!v.rows[0]?.ok) throw new Error('Invalid evidence URL (must be under allowed bucket/domain)');
 

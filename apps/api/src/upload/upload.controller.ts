@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
 import { S3Client } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import crypto from 'crypto';
@@ -22,6 +22,12 @@ type UploadRes = {
 export class UploadController {
   @Post('/upload')
   async presign(@Body() body: UploadReq): Promise<UploadRes> {
+    if (!body?.filename || !body?.contentType) {
+      throw new BadRequestException('filename and contentType required');
+    }
+    if (!process.env.S3_BUCKET) {
+      throw new BadRequestException('S3_BUCKET missing');
+    }
     const bucket = process.env.S3_BUCKET!;
     const maxSize = 25 * 1024 * 1024; // 25MB
     const ext = body.filename.split('.').pop() || 'bin';
@@ -32,7 +38,7 @@ export class UploadController {
       Key: key,
       Conditions: [
         ['content-length-range', 1, maxSize],
-        ['starts-with', '$Content-Type', ''],
+        ['eq', '$Content-Type', body.contentType],
         ['eq', '$acl', 'private']
       ],
       Fields: { 'Content-Type': body.contentType, acl: 'private' },

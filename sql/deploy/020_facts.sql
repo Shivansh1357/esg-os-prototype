@@ -5,7 +5,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Parent table (partitioned by quarter via period_start ranges)
 CREATE TABLE IF NOT EXISTS esg.facts (
-  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id            uuid NOT NULL DEFAULT gen_random_uuid(),
   tenant_id     uuid NOT NULL REFERENCES esg.tenants(id) ON DELETE CASCADE,
   entity_id     uuid NOT NULL REFERENCES esg.entities(id) ON DELETE CASCADE,
   metric_code   text NOT NULL REFERENCES esg.metrics(code),
@@ -19,8 +19,17 @@ CREATE TABLE IF NOT EXISTS esg.facts (
   quality_flags jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id, period_start),
   UNIQUE (tenant_id, entity_id, metric_code, period_start, period_end)
 ) PARTITION BY RANGE (period_start);
+
+-- Fast path for lookups/updates by id within tenant (helps even though PK is composite for partitioning rules).
+CREATE INDEX IF NOT EXISTS facts_tenant_id_idx ON esg.facts (tenant_id, id);
+
+-- Safety partition for out-of-band inserts (verify scripts, manual SQL).
+CREATE TABLE IF NOT EXISTS esg.facts_default PARTITION OF esg.facts DEFAULT;
+CREATE INDEX IF NOT EXISTS facts_default_tenant_metric ON esg.facts_default (tenant_id, entity_id, metric_code, period_start, period_end);
+CREATE INDEX IF NOT EXISTS facts_default_status ON esg.facts_default (tenant_id, status, period_start);
 
 -- Audit table
 CREATE TABLE IF NOT EXISTS esg.facts_audit (
@@ -39,12 +48,24 @@ ALTER TABLE esg.facts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE esg.facts_audit ENABLE ROW LEVEL SECURITY;
 
 -- Facts: only rows for current tenant visible/mutable
-CREATE POLICY IF NOT EXISTS facts_tenant_read  ON esg.facts      FOR SELECT USING (tenant_id = app.current_tenant());
-CREATE POLICY IF NOT EXISTS facts_tenant_write ON esg.facts      FOR ALL     USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='facts' AND policyname='facts_tenant_read') THEN
+    CREATE POLICY facts_tenant_read  ON esg.facts      FOR SELECT USING (tenant_id = app.current_tenant());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='facts' AND policyname='facts_tenant_write') THEN
+    CREATE POLICY facts_tenant_write ON esg.facts      FOR ALL     USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
 
 -- Audit readable by same tenant; inserts happen via trigger with SET LOCAL
-CREATE POLICY IF NOT EXISTS facts_audit_read   ON esg.facts_audit FOR SELECT USING (tenant_id = app.current_tenant());
-CREATE POLICY IF NOT EXISTS facts_audit_write  ON esg.facts_audit FOR INSERT WITH CHECK (tenant_id = app.current_tenant());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='facts_audit' AND policyname='facts_audit_read') THEN
+    CREATE POLICY facts_audit_read   ON esg.facts_audit FOR SELECT USING (tenant_id = app.current_tenant());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='facts_audit' AND policyname='facts_audit_write') THEN
+    CREATE POLICY facts_audit_write  ON esg.facts_audit FOR INSERT WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
 
 -- Quarter helpers
 CREATE OR REPLACE FUNCTION esg.q_start(d date) RETURNS date LANGUAGE sql IMMUTABLE AS $$
@@ -62,16 +83,16 @@ DECLARE
   q0 date := esg.q_start(d);
   q1 date := esg.q_next(d);
   part text := format('facts_%sq%s', extract(year from q0)::int, extract(quarter from q0)::int);
-  full text := format('esg.%I', part);
+  part_fqname text := format('esg.%I', part);
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
                  WHERE n.nspname='esg' AND c.relname=part) THEN
-    EXECUTE format($sql$
-      CREATE TABLE %s PARTITION OF esg.facts
-      FOR VALUES FROM (%L) TO (%L);
-      CREATE INDEX %I_tenant_metric ON %s (tenant_id, entity_id, metric_code, period_start, period_end);
-      CREATE INDEX %I_status ON %s (tenant_id, status, period_start);
-    $sql$, full, q0, q1, part, full, part, full);
+    EXECUTE format(
+      'CREATE TABLE %s PARTITION OF esg.facts FOR VALUES FROM (%L) TO (%L);' ||
+      ' CREATE INDEX %I ON %s (tenant_id, entity_id, metric_code, period_start, period_end);' ||
+      ' CREATE INDEX %I ON %s (tenant_id, status, period_start);',
+      part_fqname, q0, q1, part || '_tenant_metric', part_fqname, part || '_status', part_fqname
+    );
   END IF;
 END $$;
 
@@ -79,7 +100,6 @@ END $$;
 CREATE OR REPLACE FUNCTION esg.facts_before_ins_trg() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
-  PERFORM esg.ensure_facts_partition(NEW.period_start);
   NEW.created_at := now();
   NEW.updated_at := now();
   RETURN NEW;

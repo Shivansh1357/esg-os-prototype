@@ -31,8 +31,14 @@ CREATE TABLE IF NOT EXISTS esg.compliance_findings (
 );
 
 ALTER TABLE esg.compliance_findings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS findings_read  ON esg.compliance_findings FOR SELECT USING (tenant_id = app.current_tenant());
-CREATE POLICY IF NOT EXISTS findings_write ON esg.compliance_findings FOR ALL     USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='compliance_findings' AND policyname='findings_read') THEN
+    CREATE POLICY findings_read  ON esg.compliance_findings FOR SELECT USING (tenant_id = app.current_tenant());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='compliance_findings' AND policyname='findings_write') THEN
+    CREATE POLICY findings_write ON esg.compliance_findings FOR ALL     USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS app.allowed_evidence_prefixes (prefix text PRIMARY KEY);
 INSERT INTO app.allowed_evidence_prefixes(prefix) VALUES

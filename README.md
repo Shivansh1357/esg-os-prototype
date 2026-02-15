@@ -74,3 +74,9 @@ sql/       Sqitch migrations
 
 ## Docs
 See `docs/` for policies, ADRs, security, and contribution guidelines.
+
+Project-wide execution docs:
+- `PRD.md`
+- `Progress.md`
+- `architecture.md`
+- `run_book.md`

@@ -18,8 +18,12 @@ CREATE TABLE IF NOT EXISTS esg.report_freezes (
 );
 
 ALTER TABLE esg.report_freezes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS report_freezes_rls ON esg.report_freezes
-  FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='esg' AND tablename='report_freezes' AND policyname='report_freezes_rls') THEN
+    CREATE POLICY report_freezes_rls ON esg.report_freezes
+      FOR ALL USING (tenant_id = app.current_tenant()) WITH CHECK (tenant_id = app.current_tenant());
+  END IF;
+END $$;
 
 CREATE OR REPLACE FUNCTION esg.report_lineage(
   _tenant uuid,
@@ -64,10 +68,10 @@ facts AS (
    WHERE f.tenant_id = _tenant AND f.status = 'APPROVED'
 ),
 evid AS (
-  SELECT rule_code, evidence_url, reason, status::text AS status
-    FROM esg.compliance_findings
-    JOIN rpt r ON r.period_start=period_start AND r.period_end=period_end AND r.tenant_id=tenant_id
-   WHERE tenant_id = _tenant AND evidence_url IS NOT NULL
+  SELECT cf.rule_code, cf.evidence_url, cf.reason, cf.status::text AS status
+    FROM esg.compliance_findings cf
+    JOIN rpt r ON r.period_start = cf.period_start AND r.period_end = cf.period_end AND r.tenant_id = cf.tenant_id
+   WHERE cf.tenant_id = _tenant AND cf.evidence_url IS NOT NULL
 )
 SELECT jsonb_build_object(
   'report', jsonb_build_object(

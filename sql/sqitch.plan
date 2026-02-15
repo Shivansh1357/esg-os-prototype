@@ -2,14 +2,14 @@
 %project=esg
 %uri=https://example.com/esg
 
-001_schemas 2025-08-10 init: schemas + GUC + auth
-010_core    2025-08-10 core: tenants/users/entities/metrics + RLS
-020_facts  2025-08-10 facts: table + partitions + audit + rls
-030_calc_and_compliance  2025-08-10 calc: factor_sets + totals + proc + defaults
-040_compliance  2025-08-10 compliance: rules + findings + evaluate_brsr
-050_reports  2025-08-10 reports: tables + rls + helpers
-060_suppliers  2025-08-10 suppliers: tables + rls + rollups
-070_auditor_and_freeze  2025-08-10 auditor: lineage + freeze + versions
-080_exec  2025-08-10 exec: kpi indexes + esg.exec_kpis
+001_schemas 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # init: schemas + GUC + auth
+010_core 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # core: tenants/users/entities/metrics + RLS
+020_facts 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # facts: table + partitions + audit + rls
+030_calc_and_compliance 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # calc: factor_sets + totals + proc + defaults
+040_compliance 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # compliance: rules + findings + evaluate_brsr
+050_reports 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # reports: tables + rls + helpers
+060_suppliers 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # suppliers: tables + rls + rollups
+070_auditor_and_freeze 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # auditor: lineage + freeze + versions
+080_exec 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # exec: kpi indexes + esg.exec_kpis
 
 
