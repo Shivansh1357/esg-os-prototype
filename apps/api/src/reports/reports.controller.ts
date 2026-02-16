@@ -1,6 +1,6 @@
 import { Controller, Param, Post, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import ExcelJS from 'exceljs';
@@ -14,7 +14,7 @@ const s3 = new S3Client({
   credentials: { accessKeyId: process.env.S3_ACCESS_KEY!, secretAccessKey: process.env.S3_SECRET_KEY! }
 });
 
-type ExportResponse = { url: string };
+type ExportResponse = { url: string; mode: 'live' | 'snapshot' };
 
 @Controller()
 export class ReportsController {
@@ -28,46 +28,13 @@ export class ReportsController {
     await client.query(`SELECT pg_advisory_lock($1,$2)`, [lockKey1, lockKey2]);
 
     try {
-      const r = await client.query(
-        `SELECT id, tenant_id, name, template, period_start, period_end
-           FROM esg.reports WHERE id=$1 AND tenant_id = app.current_tenant()`,
+      const payloadResult = await client.query(
+        `SELECT esg.get_report_export_payload(app.current_tenant(), $1) AS payload`,
         [id]
       );
-      if (r.rowCount === 0) throw new Error('report not found');
-      const rpt = r.rows[0];
-
-      await client.query(`SELECT esg.evaluate_brsr(app.current_tenant(), $1, $2)`, [rpt.period_start, rpt.period_end]);
-
-      const fs = await client.query(
-        `SELECT td.factor_set_id AS id, fs.code, fs.name, fs.version
-           FROM esg.tenant_defaults td
-           JOIN esg.factor_sets fs ON fs.id=td.factor_set_id
-          WHERE td.tenant_id = app.current_tenant()`
-      );
-      const factor = fs.rows[0];
-
-      const totals = await client.query(
-        `SELECT COALESCE(SUM(scope1),0) s1, COALESCE(SUM(scope2_loc),0) s2l, COALESCE(SUM(scope2_mkt),0) s2m, COALESCE(SUM(scope3),0) s3
-         FROM esg.emission_totals
-        WHERE tenant_id = app.current_tenant() AND period_start=$1 AND period_end=$2 AND factor_set_id=$3`,
-        [rpt.period_start, rpt.period_end, factor?.id]
-      );
-
-      const outliers = await client.query(
-        `SELECT count(*)::int AS n
-           FROM esg.facts
-          WHERE tenant_id=app.current_tenant()
-            AND period_start=$1 AND period_end=$2
-            AND (quality_flags->>'outlier')::bool IS TRUE`,
-        [rpt.period_start, rpt.period_end]
-      );
-
-      const comp = await client.query(
-        `SELECT SUM((status='PASS')::int) pass, SUM((status='FAIL')::int) fail, SUM((status='RISK')::int) risk, COUNT(*) total
-         FROM esg.compliance_findings
-        WHERE tenant_id=app.current_tenant() AND period_start=$1 AND period_end=$2`,
-        [rpt.period_start, rpt.period_end]
-      );
+      const payload = payloadResult.rows[0]?.payload;
+      if (!payload) throw new Error('report not found');
+      const rpt = payload.report;
 
       const ts = new Date().toISOString().replace(/[:.]/g,'-');
       const key = `reports/${id}/${ts}.${format}`;
@@ -78,22 +45,26 @@ export class ReportsController {
         body = await buildWorkbookBuffer({
           reportName: rpt.name,
           template: rpt.template,
-          periodStart: rpt.period_start,
-          periodEnd: rpt.period_end,
-          totals: totals.rows[0],
-          compliance: comp.rows[0],
-          factor
+          periodStart: rpt.periodStart,
+          periodEnd: rpt.periodEnd,
+          totals: payload.totals,
+          compliance: payload.compliance,
+          factor: payload.factorSet,
+          calcVersion: payload.calcVersion,
+          completenessPercent: payload.completenessPercent
         });
       } else {
         body = await buildPdfBuffer({
           reportName: rpt.name,
           template: rpt.template,
-          periodStart: rpt.period_start,
-          periodEnd: rpt.period_end,
-          totals: totals.rows[0],
-          compliance: comp.rows[0],
-          factor,
-          outlierCount: outliers.rows[0].n
+          periodStart: rpt.periodStart,
+          periodEnd: rpt.periodEnd,
+          totals: payload.totals,
+          compliance: payload.compliance,
+          factor: payload.factorSet,
+          outlierCount: Number(payload.outlierCount ?? 0),
+          calcVersion: payload.calcVersion,
+          completenessPercent: payload.completenessPercent
         });
       }
 
@@ -113,7 +84,7 @@ export class ReportsController {
       const { GetObjectCommand } = await import('@aws-sdk/client-s3');
       const getUrl = await getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 3600 });
 
-      return { url: getUrl };
+      return { url: getUrl, mode: payload.mode === 'snapshot' ? 'snapshot' : 'live' };
     } finally {
       await client.query(`SELECT pg_advisory_unlock($1,$2)`, [lockKey1, lockKey2]);
     }

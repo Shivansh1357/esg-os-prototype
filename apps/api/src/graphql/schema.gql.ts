@@ -1,4 +1,4 @@
-import { Args, Context, Field, ID, InputType, Mutation, ObjectType, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Field, Float, ID, InputType, Mutation, ObjectType, Query, Resolver } from '@nestjs/graphql';
 import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
@@ -33,6 +33,11 @@ export class Finding {
   @Field() status!: string;
   @Field() severity!: number;
   @Field() reason!: string;
+  @Field({nullable:true}) framework?: string;
+  @Field({nullable:true}) description?: string;
+  @Field({nullable:true}) metricCode?: string;
+  @Field() requiresEvidence!: boolean;
+  @Field(() => Float) completenessWeight!: number;
   @Field({nullable:true}) evidenceUrl?: string;
   @Field({nullable:true}) owner?: string;
   @Field({nullable:true}) dueDate?: string;

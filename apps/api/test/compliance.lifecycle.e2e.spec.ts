@@ -5,15 +5,17 @@ const pool = new Pool({ connectionString });
 
 async function withCtx<T>(tenant: string, user: string, fn: (c: any)=>Promise<T>){
   const c = await pool.connect();
-  try{ await c.query('BEGIN');
-       await c.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenant]);
-       await c.query(`SELECT set_config('app.user_id', $1, true)`, [user]);
-       const out = await fn(c);
-       await c.query('ROLLBACK'); return out;
+  try{
+    await c.query('BEGIN');
+    await c.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenant]);
+    await c.query(`SELECT set_config('app.user_id', $1, true)`, [user]);
+    const out = await fn(c);
+    await c.query('ROLLBACK');
+    return out;
   } finally { c.release(); }
 }
 
-describe('BRSR evaluate + resolve', () => {
+describe('compliance lifecycle e2e', () => {
   let tenant: string, entity: string;
 
   afterAll(async () => {
@@ -24,7 +26,7 @@ describe('BRSR evaluate + resolve', () => {
     const c = await pool.connect();
     try {
       await c.query('BEGIN');
-      tenant = (await c.query(`INSERT INTO esg.tenants(name) VALUES('T-D4') RETURNING id`)).rows[0].id;
+      tenant = (await c.query(`INSERT INTO esg.tenants(name) VALUES('T-D4-E2E') RETURNING id`)).rows[0].id;
       entity = (await c.query(
         `INSERT INTO esg.entities(tenant_id,name,etype) VALUES($1,'HQ','ORG') RETURNING id`, [tenant]
       )).rows[0].id;
@@ -32,9 +34,9 @@ describe('BRSR evaluate + resolve', () => {
     } finally { c.release(); }
   });
 
-  it('enforces metric + evidence lifecycle with deterministic completeness', async () => {
-    const p0 = '2025-07-01', p1 = '2025-09-30';
-    const user = '00000000-0000-0000-0000-00000000cdef';
+  it('moves completeness 0 to 50 to 100 with no duplicate findings', async () => {
+    const p0 = '2025-10-01', p1 = '2025-12-31';
+    const user = '00000000-0000-0000-0000-00000000d444';
 
     await withCtx(tenant, user, async (c) => {
       await c.query(`UPDATE esg.compliance_rules SET active=false WHERE framework='BRSR_CORE'`);
@@ -45,10 +47,10 @@ describe('BRSR evaluate + resolve', () => {
               title, category, severity, rule_type, params, active
             )
             VALUES (
-              gen_random_uuid(), 'TEST-D4-METRIC', 'BRSR_CORE', 'Approved electricity fact required', 'ELEC_KWH', false, 'MEDIUM',
+              gen_random_uuid(), 'TEST-D4-E2E-METRIC', 'BRSR_CORE', 'Metric must exist', 'ELEC_KWH', false, 'MEDIUM',
               'Metric required', 'Energy', 3, 'REQUIRED_FACT', '{"metricCode":"ELEC_KWH"}'::jsonb, true
             )
-            RETURNING id`,
+            RETURNING id`
         )
       ).rows[0].id as string;
       const evidenceRuleId = (
@@ -58,10 +60,10 @@ describe('BRSR evaluate + resolve', () => {
               title, category, severity, rule_type, params, active
             )
             VALUES (
-              gen_random_uuid(), 'TEST-D4-EVIDENCE', 'BRSR_CORE', 'Evidence attachment required', NULL, true, 'MEDIUM',
+              gen_random_uuid(), 'TEST-D4-E2E-EVIDENCE', 'BRSR_CORE', 'Evidence must exist', NULL, true, 'MEDIUM',
               'Evidence required', 'Governance', 3, 'EVIDENCE_REQUIRED', '{}'::jsonb, true
             )
-            RETURNING id`,
+            RETURNING id`
         )
       ).rows[0].id as string;
 
@@ -71,12 +73,12 @@ describe('BRSR evaluate + resolve', () => {
 
       await c.query(
         `INSERT INTO esg.facts(tenant_id,entity_id,metric_code,period_start,period_end,value,unit,status)
-         VALUES ($1,$2,'ELEC_KWH',$3,$4,500,'kWh','APPROVED')`,
+         VALUES ($1,$2,'ELEC_KWH',$3,$4,777,'kWh','APPROVED')`,
         [tenant, entity, p0, p1]
       );
       await c.query(`SELECT esg.evaluate_brsr($1,$2,$3)`, [tenant, p0, p1]);
       const metricFinding = await c.query(
-        `SELECT id, status FROM esg.compliance_findings
+        `SELECT status FROM esg.compliance_findings
           WHERE tenant_id=$1 AND period_start=$2 AND period_end=$3 AND rule_id=$4`,
         [tenant, p0, p1, metricRuleId]
       );
@@ -91,31 +93,23 @@ describe('BRSR evaluate + resolve', () => {
       expect(Number(pct50.rows[0].pct)).toBe(50);
 
       await c.query(
-        `UPDATE esg.compliance_findings
-            SET evidence_url=$1
-          WHERE id=$2`,
-        ['s3://uploads/evidence.pdf', evidenceFinding.rows[0].id]
+        `UPDATE esg.compliance_findings SET evidence_url=$1 WHERE id=$2`,
+        ['s3://uploads/d4-e2e-proof.pdf', evidenceFinding.rows[0].id]
       );
       await c.query(`SELECT esg.evaluate_brsr($1,$2,$3)`, [tenant, p0, p1]);
       const pct100 = await c.query(`SELECT esg.completeness_percent($1,$2,$3) AS pct`, [tenant, p0, p1]);
       expect(Number(pct100.rows[0].pct)).toBe(100);
 
-      const beforeCount = await c.query(
-        `SELECT COUNT(*)::int AS n
-           FROM esg.compliance_findings
-          WHERE tenant_id=$1 AND period_start=$2 AND period_end=$3`,
+      const countBefore = await c.query(
+        `SELECT COUNT(*)::int AS n FROM esg.compliance_findings WHERE tenant_id=$1 AND period_start=$2 AND period_end=$3`,
         [tenant, p0, p1]
       );
       await c.query(`SELECT esg.evaluate_brsr($1,$2,$3)`, [tenant, p0, p1]);
-      const afterCount = await c.query(
-        `SELECT COUNT(*)::int AS n
-           FROM esg.compliance_findings
-          WHERE tenant_id=$1 AND period_start=$2 AND period_end=$3`,
+      const countAfter = await c.query(
+        `SELECT COUNT(*)::int AS n FROM esg.compliance_findings WHERE tenant_id=$1 AND period_start=$2 AND period_end=$3`,
         [tenant, p0, p1]
       );
-      expect(afterCount.rows[0].n).toBe(beforeCount.rows[0].n);
+      expect(countAfter.rows[0].n).toBe(countBefore.rows[0].n);
     });
   });
 });
-
-

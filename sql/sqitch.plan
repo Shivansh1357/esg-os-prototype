@@ -11,5 +11,8 @@
 060_suppliers 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # suppliers: tables + rls + rollups
 070_auditor_and_freeze 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # auditor: lineage + freeze + versions
 080_exec 2025-08-10T00:00:00Z ESG OS <dev@esg-os.local> # exec: kpi indexes + esg.exec_kpis
+090_compliance_hardening 2026-02-15T00:00:00Z ESG OS <dev@esg-os.local> # compliance: deterministic findings + completeness
+100_report_freeze_hardening 2026-02-15T00:00:00Z ESG OS <dev@esg-os.local> # reports: freeze snapshot integrity + locked period guard
+110_report_export_payload 2026-02-16T00:00:00Z ESG OS <dev@esg-os.local> # reports: frozen snapshot-safe export payload
 
 

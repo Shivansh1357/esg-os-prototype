@@ -29,10 +29,12 @@ CREATE TABLE IF NOT EXISTS esg.emission_totals (
   scope2_loc numeric,
   scope2_mkt numeric,
   scope3 numeric,
+  calc_version integer NOT NULL DEFAULT 1,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, entity_id, period_start, period_end, factor_set_id)
 );
+ALTER TABLE esg.emission_totals ADD COLUMN IF NOT EXISTS calc_version integer NOT NULL DEFAULT 1;
 
 ALTER TABLE esg.emission_totals ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
@@ -93,7 +95,7 @@ BEGIN
   END IF;
 
   SELECT lk.k1, lk.k2 INTO k1, k2 FROM esg.calc_lock_keys(_tenant,_entity,_pstart,_pend) lk;
-  PERFORM pg_advisory_lock(k1, k2);
+  PERFORM pg_advisory_xact_lock(k1, k2);
 
   SELECT coalesce(sum(f.value * ef.loc_kgco2e_per_unit),0)
     INTO s1
@@ -136,14 +138,10 @@ BEGIN
   VALUES (_tenant, _entity, _pstart, _pend, _factor_set, s1, s2_loc, s2_mkt, s3)
   ON CONFLICT (tenant_id, entity_id, period_start, period_end, factor_set_id)
   DO UPDATE SET scope1=EXCLUDED.scope1, scope2_loc=EXCLUDED.scope2_loc, scope2_mkt=EXCLUDED.scope2_mkt,
-                scope3=EXCLUDED.scope3, updated_at=now()
+                scope3=EXCLUDED.scope3, calc_version=esg.emission_totals.calc_version + 1, updated_at=now()
   RETURNING * INTO row_out;
 
-  PERFORM pg_advisory_unlock(k1, k2);
   RETURN row_out;
-EXCEPTION WHEN OTHERS THEN
-  PERFORM pg_advisory_unlock(k1, k2);
-  RAISE;
 END $$;
 
 CREATE OR REPLACE FUNCTION esg.totals_before_upd_trg() RETURNS trigger

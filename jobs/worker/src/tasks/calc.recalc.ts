@@ -17,10 +17,10 @@ const task: Task = async (payload: Payload, { logger }) => {
   const started = Date.now();
   try {
     await client.query('BEGIN');
-    await client.query('SET LOCAL app.tenant_id = $1', [tenantId]);
-    await client.query('SET LOCAL app.user_id = $1', ['00000000-0000-0000-0000-00000000WORK']);
+    await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
+    await client.query(`SELECT set_config('app.user_id', $1, true)`, ['00000000-0000-0000-0000-000000000001']);
     const res = await client.query(
-      `SELECT id FROM esg.recalc_emissions($1,$2,$3,$4,$5)`,
+      `SELECT (esg.recalc_emissions($1,$2,$3,$4,$5)).id AS id`,
       [tenantId, entityId, periodStart, periodEnd, factorSetId]
     );
     await client.query('COMMIT');

@@ -1,9 +1,11 @@
 SELECT to_regclass('esg.report_freezes') IS NOT NULL;
 
 DO $$
-DECLARE tid uuid; rid uuid; uid uuid := gen_random_uuid();
+DECLARE tid uuid; rid uuid; uid uuid := gen_random_uuid(); fsid uuid;
 BEGIN
   INSERT INTO esg.tenants(name) VALUES('D7V') RETURNING id INTO tid;
+  SELECT id INTO fsid FROM esg.factor_sets ORDER BY created_at LIMIT 1;
+  INSERT INTO esg.tenant_defaults(tenant_id, factor_set_id) VALUES (tid, fsid);
   PERFORM set_config('app.tenant_id', tid::text, true);
   PERFORM set_config('app.user_id', uid::text, true);
   INSERT INTO esg.reports(tenant_id,name,template,period_start,period_end)
