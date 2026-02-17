@@ -45,6 +45,8 @@
     "dev": "concurrently \"pnpm dev:api\" \"pnpm dev:web\"",
     "test:api": "pnpm --filter @apps/api test",
     "test:web:e2e": "pnpm --filter @apps/web test:e2e",
+    "test:api:jwt": "cross-env AUTH_MODE=jwt JWT_SECRET=test-jwt-secret pnpm --filter @apps/api test",
+    "test:web:e2e:jwt": "cross-env AUTH_MODE=jwt JWT_SECRET=test-jwt-secret pnpm --filter @apps/web test:e2e",
     "test:all": "pnpm -r test",
     "test": "pnpm test:all",
     "lint": "pnpm -r lint",
