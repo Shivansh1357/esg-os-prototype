@@ -8,11 +8,18 @@ import { PublicController } from './public/public.controller';
 import { AuditorController } from './auditor/auditor.controller';
 import { AuditorPublicController } from './public/auditorPublic.controller';
 import { ExecController } from './exec/exec.controller';
+import { HealthController } from './health.controller';
+import { AuditController } from './audit/audit.controller';
+import { MetricsController } from './observability/metrics.controller';
+import { JwtAuthMiddleware } from './auth/jwt.middleware';
+import { RequestContextMiddleware } from './observability/request.middleware';
+import { PilotController } from './pilot/pilot.controller';
+import { FeedbackController } from './pilot/feedback.controller';
 
-@Module({ imports: [GraphModule], controllers: [UploadController, ReportsController, SuppliersController, PublicController, AuditorController, AuditorPublicController, ExecController] })
+@Module({ imports: [GraphModule], controllers: [UploadController, ReportsController, SuppliersController, PublicController, AuditorController, AuditorPublicController, ExecController, HealthController, AuditController, MetricsController, PilotController, FeedbackController] })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(WithTenantMiddleware).forRoutes('*');
+    consumer.apply(RequestContextMiddleware, JwtAuthMiddleware, WithTenantMiddleware).forRoutes('*');
   }
 }
 

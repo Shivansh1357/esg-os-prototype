@@ -2,7 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { gql } from '@/lib/api'
+import { getJSON, gql } from '@/lib/api'
+import { ReportMeta } from '@/lib/reportMeta'
+import { useReportContext } from '../report-context'
+import ReportContextBanner from '@/components/ReportContextBanner'
+import { getClientRole } from '@/lib/role'
 
 type Totals = {
   scope1: number | null
@@ -25,40 +29,50 @@ mutation R($entityId:String!, $periodStart:String!, $periodEnd:String!, $factorS
 `
 
 export default function EmissionsPage() {
-  // ——— state
+  const { reportId } = useReportContext()
   const [entityId, setEntityId] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('entityId') : null) || '')
   const [date, setDate] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('qstart') : null) || todayISO())
   const factorSetId = process.env.NEXT_PUBLIC_DEFAULT_FACTOR_SET_ID
   const factorLabel = process.env.NEXT_PUBLIC_FACTOR_SET_LABEL || 'Default'
-
   const qc = useQueryClient()
+  const role = getClientRole()
+  const canRecalc = role === 'ADMIN'
 
-  // derive quarter start/end from date
   const { ps, pe, prevPs, prevPe } = useMemo(() => {
     const d = new Date(date)
     const qs = new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1)
     const qe = new Date(qs.getFullYear(), qs.getMonth() + 3, 0)
     const pqs = new Date(qs.getFullYear(), qs.getMonth() - 3, 1)
     const pqe = new Date(pqs.getFullYear(), pqs.getMonth() + 3, 0)
-    return {
-      ps: iso(qs), pe: iso(qe),
-      prevPs: iso(pqs), prevPe: iso(pqe),
-    }
+    return { ps: iso(qs), pe: iso(qe), prevPs: iso(pqs), prevPe: iso(pqe) }
   }, [date])
+
+  const selectedReport = useQuery({
+    queryKey: ['report-meta', reportId],
+    enabled: !!reportId,
+    queryFn: async () => await getJSON<ReportMeta>(`/reports/${reportId}`)
+  })
+  const periodReport = useQuery({
+    queryKey: ['report-meta-by-period', ps, pe, reportId],
+    enabled: !reportId,
+    queryFn: async () => await getJSON<ReportMeta | null>(`/reports/by-period?periodStart=${ps}&periodEnd=${pe}`)
+  })
+  const activeReport = selectedReport.data ?? periodReport.data ?? null
+  const periodStart = activeReport?.periodStart ?? ps
+  const periodEnd = activeReport?.periodEnd ?? pe
+  const isFrozenPeriod = !!activeReport?.isLocked
 
   useEffect(() => { localStorage.setItem('entityId', entityId) }, [entityId])
   useEffect(() => { localStorage.setItem('qstart', date) }, [date])
 
-  // ——— queries
   const cur = useQuery({
-    queryKey: ['totals', entityId, ps, pe],
+    queryKey: ['totals', entityId, periodStart, periodEnd],
     enabled: !!entityId,
     queryFn: async () => {
-      const data = await gql<{ getTotals: Totals | null }>(GET_TOTALS, { entityId, periodStart: ps, periodEnd: pe })
+      const data = await gql<{ getTotals: Totals | null }>(GET_TOTALS, { entityId, periodStart, periodEnd })
       return data.getTotals
     }
   })
-
   const prev = useQuery({
     queryKey: ['totals', entityId, prevPs, prevPe],
     enabled: !!entityId,
@@ -68,11 +82,9 @@ export default function EmissionsPage() {
     }
   })
 
-  // YoY deltas
   const deltas = useMemo(() => {
     if (!cur.data || !prev.data) return null
-    const pct = (c: number | null, p: number | null) =>
-      (c == null || p == null || p === 0) ? null : round(((c - p) / p) * 100, 2)
+    const pct = (c: number | null, p: number | null) => (c == null || p == null || p === 0 ? null : round(((c - p) / p) * 100, 2))
     return {
       s1: pct(cur.data.scope1, prev.data.scope1),
       s2l: pct(cur.data.scope2_loc, prev.data.scope2_loc),
@@ -81,54 +93,56 @@ export default function EmissionsPage() {
     }
   }, [cur.data, prev.data])
 
-  // ——— recalc
   const [notice, setNotice] = useState<string | null>(null)
   const recalc = useMutation({
     mutationFn: async () => {
       if (!factorSetId) return false
-      await gql<{ recalc: boolean }>(RECALC, { entityId, periodStart: ps, periodEnd: pe, factorSetId })
+      await gql<{ recalc: boolean }>(RECALC, { entityId, periodStart, periodEnd, factorSetId })
       return true
     },
     onSuccess: async () => {
-      setNotice('Recalculation enqueued… updating data')
-      // light polling up to ~30s
-      const started = Date.now()
-      const poll = async () => {
-        await qc.invalidateQueries({ queryKey: ['totals', entityId, ps, pe] })
-        setTimeout(() => {
-          if (Date.now() - started > 30000) {
-            setNotice('Still processing in the background. Totals will refresh soon.')
-            return
-          }
-          // If totals changed, clear notice (we don’t have a checksum; we just refresh once)
-          setNotice(null)
-        }, 1200)
-      }
-      poll()
+      setNotice('Recalculation enqueued. Updating data...')
+      await qc.invalidateQueries({ queryKey: ['totals', entityId, periodStart, periodEnd] })
+      setTimeout(() => setNotice(null), 1200)
     },
     onError: (e: any) => setNotice(e?.message || 'Failed to enqueue recalculation')
   })
 
   return (
     <div>
+      <ReportContextBanner meta={activeReport} />
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 12 }}>
         <div>
           <h2 style={{ fontSize: 18, marginBottom: 6 }}>Emissions Explorer</h2>
-          <small style={{ opacity: 0.8 }}>Pick entity and quarter to view Scope 1 / 2 (loc & mkt) / 3.</small>
+          <small style={{ opacity: 0.8 }}>Pick entity and quarter to view Scope 1/2/3 totals.</small>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <FactorPicker factorSetId={factorSetId} label={factorLabel} />
-          {factorSetId && (
-            <button
-              onClick={() => recalc.mutate()}
-              disabled={!entityId || recalc.isPending}
-              title="Recalculate totals for this quarter with the selected factor set"
-            >
-              {recalc.isPending ? 'Recalculating…' : 'Recalculate'}
-            </button>
-          )}
+          <button
+            data-test="recalc-button"
+            onClick={() => recalc.mutate()}
+            disabled={!entityId || recalc.isPending || isFrozenPeriod || !factorSetId || !canRecalc}
+            title={
+              isFrozenPeriod
+                ? 'Report is frozen. Unlocking requires creating a new report version.'
+                : !canRecalc
+                ? 'Insufficient permissions.'
+                : !factorSetId
+                ? 'No factor set configured.'
+                : 'Recalculate totals for this quarter'
+            }
+          >
+            {recalc.isPending ? 'Recalculating...' : 'Recalculate'}
+          </button>
         </div>
       </header>
+
+      {isFrozenPeriod && (
+        <div data-test="frozen-period-banner" style={{ margin: '8px 0 12px', padding: 10, border: '1px solid #274', borderRadius: 8, background: '#0f2318' }}>
+          <b>Frozen Snapshot</b> - this quarter is locked. Recalculation is disabled.
+          <div data-test="calc-version-badge" style={{ marginTop: 6, fontSize: 12 }}>Calc Version: {activeReport?.calcVersion ?? '—'}</div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
         <div>
@@ -141,7 +155,7 @@ export default function EmissionsPage() {
         </div>
         <div>
           <label>Period</label>
-          <div style={{ padding: 8, border: '1px solid #233', borderRadius: 8 }}>{ps} → {pe}</div>
+          <div style={{ padding: 8, border: '1px solid #233', borderRadius: 8 }}>{periodStart} → {periodEnd}</div>
         </div>
         <div>
           <label>Prev. quarter</label>
@@ -149,11 +163,7 @@ export default function EmissionsPage() {
         </div>
       </div>
 
-      {notice && (
-        <div data-test="recalc-notice" style={{ margin: '10px 0 16px', padding: 10, border: '1px solid #335', borderRadius: 8, background: '#0f1630' }}>
-          {notice}
-        </div>
-      )}
+      {notice && <div data-test="recalc-notice" style={{ margin: '10px 0 16px', padding: 10, border: '1px solid #335', borderRadius: 8, background: '#0f1630' }}>{notice}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(220px,1fr))', gap: 12, marginTop: 8 }}>
         <Card title="Scope 1" value={cur.data?.scope1} deltaPct={deltas?.s1} />
@@ -161,15 +171,9 @@ export default function EmissionsPage() {
         <Card title="Scope 2 (mkt)" value={cur.data?.scope2_mkt} deltaPct={deltas?.s2m} />
         <Card title="Scope 3" value={cur.data?.scope3} deltaPct={deltas?.s3} />
       </div>
-
-      <div style={{ marginTop: 16, fontSize: 12, opacity: 0.8 }}>
-        Data reflects the tenant’s default factor set for display. Recalculate uses the selected factor set (if configured).
-      </div>
     </div>
   )
 }
-
-/* ------- components & utils ------- */
 
 function Card({ title, value, deltaPct }: { title: string, value: number | null | undefined, deltaPct?: number | null }) {
   const v = value ?? 0
@@ -179,22 +183,18 @@ function Card({ title, value, deltaPct }: { title: string, value: number | null 
   return (
     <div style={{ border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
       <div style={{ fontSize: 12, opacity: 0.8 }}>{title}</div>
-      <div style={{ fontSize: 24, fontWeight: 600, marginTop: 6 }}>{formatNumber(v)} <span style={{ fontSize: 12 }}>kgCO₂e</span></div>
+      <div style={{ fontSize: 24, fontWeight: 600, marginTop: 6 }}>{formatNumber(v)} <span style={{ fontSize: 12 }}>kgCO2e</span></div>
       <div style={{ marginTop: 6, fontSize: 12, color }}>{deltaTxt} vs prev qtr</div>
     </div>
   )
 }
 
 function FactorPicker({ factorSetId, label }: { factorSetId?: string, label?: string }) {
-  if (!factorSetId) {
-    return <div title="Set NEXT_PUBLIC_DEFAULT_FACTOR_SET_ID to enable recalculation"><span style={{ opacity: 0.6 }}>Factor set: default (view-only)</span></div>
-  }
+  if (!factorSetId) return <div><span style={{ opacity: 0.6 }}>Factor set: default (view-only)</span></div>
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <span style={{ opacity: 0.8 }}>Factor set</span>
-      <select defaultValue={factorSetId} onChange={(e) => {/* reserved for future; single option for now */}}>
-        <option value={factorSetId}>{label || 'Default'}</option>
-      </select>
+      <select defaultValue={factorSetId}><option value={factorSetId}>{label || 'Default'}</option></select>
     </div>
   )
 }
@@ -211,5 +211,3 @@ function formatNumber(n: number) {
   try { return Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(n) }
   catch { return String(n) }
 }
-
-

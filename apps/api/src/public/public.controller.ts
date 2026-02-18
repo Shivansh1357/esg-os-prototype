@@ -1,17 +1,21 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, OnModuleDestroy, Param, Post, Query } from '@nestjs/common';
 import { verifySupplierToken } from './token';
 import { Pool } from 'pg';
 import { S3Client } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-
 @Controller()
-export class PublicController {
+export class PublicController implements OnModuleDestroy {
+  private readonly pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  async onModuleDestroy() {
+    await this.pool.end();
+  }
+
   @Get('/s/:token')
   async info(@Param('token') token: string) {
     const c = verifySupplierToken(token);
-    const client = await pool.connect();
+    const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [c.tid]);
@@ -27,9 +31,12 @@ export class PublicController {
   }
 
   @Post('/s/:token')
-  async submit(@Param('token') token: string, @Body() body: { emissionsKgCO2e?: number; evidenceUrl?: string; activity?: any }) {
+  async submit(
+    @Param('token') token: string,
+    @Body() body: { emissionsKgCO2e?: number; evidenceUrl?: string; activity?: any; category?: string; dataQualityTier?: 'PRIMARY' | 'SECONDARY' | 'ESTIMATED' }
+  ) {
     const c = verifySupplierToken(token);
-    const client = await pool.connect();
+    const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [c.tid]);
@@ -39,13 +46,21 @@ export class PublicController {
         if (!v.rows[0]?.ok) throw new Error('Invalid evidence URL');
       }
       await client.query(
-        `INSERT INTO esg.supplier_responses(tenant_id,supplier_id,period_start,period_end,status,emissions_kgco2e,activity,evidence_url)
-         VALUES (app.current_tenant(), $1, $2, $3, 'SUBMITTED', $4, $5, $6)
+        `INSERT INTO esg.supplier_responses(tenant_id,supplier_id,period_start,period_end,status,emissions_kgco2e,activity,evidence_url,category,data_quality_tier,approved)
+         VALUES (app.current_tenant(), $1, $2, $3, 'SUBMITTED', $4, $5, $6, $7, $8, false)
          ON CONFLICT (tenant_id, supplier_id, period_start, period_end)
-         DO UPDATE SET status='SUBMITTED', emissions_kgco2e=EXCLUDED.emissions_kgco2e, activity=EXCLUDED.activity, evidence_url=EXCLUDED.evidence_url, submitted_at=now()`,
-        [c.sid, c.ps, c.pe, body.emissionsKgCO2e ?? null, body.activity ?? {}, body.evidenceUrl ?? null]
+         DO UPDATE SET status='SUBMITTED',
+                       emissions_kgco2e=EXCLUDED.emissions_kgco2e,
+                       activity=EXCLUDED.activity,
+                       evidence_url=EXCLUDED.evidence_url,
+                       category=EXCLUDED.category,
+                       data_quality_tier=EXCLUDED.data_quality_tier,
+                       approved=false,
+                       submitted_at=now()`,
+        [c.sid, c.ps, c.pe, body.emissionsKgCO2e ?? null, body.activity ?? {}, body.evidenceUrl ?? null, body.category ?? null, body.dataQualityTier ?? 'PRIMARY']
       );
       await client.query(`UPDATE esg.suppliers SET status='RESPONDED' WHERE id=$1 AND tenant_id=app.current_tenant()`, [c.sid]);
+      await client.query(`SELECT esg.refresh_exec_kpi_base()`);
       await client.query('COMMIT');
       return { ok: true };
     } catch (e) {

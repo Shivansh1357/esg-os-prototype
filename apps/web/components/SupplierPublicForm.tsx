@@ -27,6 +27,7 @@ export default function SupplierPublicForm({ token }: { token: string }) {
   const [info, setInfo] = useState<{ supplier:{ name:string; email:string; category:string; spend:number }; periodStart:string; periodEnd:string }|null>(null)
   const [emissions, setEmissions] = useState<number>(0)
   const [notes, setNotes] = useState<string>('')
+  const [tier, setTier] = useState<'PRIMARY'|'SECONDARY'|'ESTIMATED'>('PRIMARY')
   const [evidenceFile, setEvidenceFile] = useState<File|null>(null)
   const [evidenceUrl, setEvidenceUrl] = useState<string| null>(null)
   const [busy, setBusy] = useState(false)
@@ -83,6 +84,8 @@ export default function SupplierPublicForm({ token }: { token: string }) {
         body: JSON.stringify({
           emissionsKgCO2e: emissions || null,
           evidenceUrl: evidenceUrl || null,
+          category: info?.supplier.category ?? null,
+          dataQualityTier: tier,
           activity: { method: notes || '' }
         })
       })
@@ -125,6 +128,16 @@ export default function SupplierPublicForm({ token }: { token: string }) {
                 <label>{L.emissions}</label>
                 <input type="number" value={String(emissions)} onChange={e=>setEmissions(Number(e.target.value||0))} />
               </div>
+              <div>
+                <label>Data quality tier</label>
+                <select value={tier} onChange={(e)=>setTier(e.target.value as 'PRIMARY'|'SECONDARY'|'ESTIMATED')}>
+                  <option value="PRIMARY">PRIMARY</option>
+                  <option value="SECONDARY">SECONDARY</option>
+                  <option value="ESTIMATED">ESTIMATED</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:12, marginTop:12 }}>
               <div>
                 <label>{L.evidence}</label>
                 <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" onChange={(e)=>setEvidenceFile(e.target.files?.[0]||null)} />

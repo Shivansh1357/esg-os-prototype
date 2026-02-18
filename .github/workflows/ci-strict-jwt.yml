@@ -1,0 +1,74 @@
+name: CI Strict JWT
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: esg
+          POSTGRES_DB: esg-os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d esg-os"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:esg@localhost:5432/esg-os
+      JWT_SECRET: test-jwt-secret
+      AUTH_MODE: jwt
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Sqitch
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sqitch libdbd-pg-perl postgresql-client
+
+      - name: Deploy database migrations
+        working-directory: sql
+        run: sqitch deploy db:pg://postgres:esg@localhost:5432/esg-os
+
+      - name: Verify database migrations
+        working-directory: sql
+        run: sqitch verify db:pg://postgres:esg@localhost:5432/esg-os
+
+      - name: Run API tests (strict JWT)
+        run: pnpm test:api:jwt
+
+      - name: Build web
+        run: pnpm web:build
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @apps/web exec playwright install --with-deps chromium
+
+      - name: Run Playwright tests (strict JWT)
+        run: pnpm test:web:e2e:jwt

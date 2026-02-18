@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 type Claims = { tid: string; sid: string; ps: string; pe: string; exp: number; iat: number; v: 1 };
 const enc = (obj: any) => Buffer.from(JSON.stringify(obj)).toString('base64url');

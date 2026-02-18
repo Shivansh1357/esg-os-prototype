@@ -9,6 +9,8 @@ import { Request } from 'express';
 import { pgClientFrom } from '../db/reqpg';
 import { enqueueRecalc } from '../queue/enqueue';
 import { getDefaultFactorSetId } from '../db/factors';
+import { enforceRateLimit, requireRole } from '../rbac/access';
+import { incMetric } from '../observability/metrics';
 
 @ObjectType()
 export class Metric { @Field() code!: string; @Field() name!: string; @Field() unit!: string; @Field() scope!: number; }
@@ -84,6 +86,7 @@ export class RootResolver {
   // gapMap implemented in ComplianceResolver
   @Mutation(() => Boolean)
   async setDefaultFactorSet(@Args('id') factorSetId: string, @Context() ctx?: { req: Request; res?: any }) {
+    requireRole('ADMIN');
     const req = ctx?.req as Request | undefined;
     if (!req) return false;
     const client = pgClientFrom(req);
@@ -103,6 +106,8 @@ export class RootResolver {
     @Args('factorSetId') factorSetId: string,
     @Context() ctx?: { req: Request; res?: any }
   ) {
+    requireRole('ADMIN');
+    enforceRateLimit('recalc', 30, 60_000);
     const req = ctx?.req as Request | undefined;
     if (!req) return false;
     const client = pgClientFrom(req);
@@ -114,6 +119,7 @@ export class RootResolver {
       periodEnd,
       factorSetId
     });
+    incMetric('recalc_total');
     return true;
   }
   // resolveGap implemented in ComplianceResolver

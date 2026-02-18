@@ -27,7 +27,9 @@
     "worker:run": "Start Graphile Worker against local DB.",
     "worker:once": "Run Graphile Worker in one-shot mode.",
     "sqitch:deploy:docker": "Run Sqitch deploy inside a docker container against compose DB.",
-    "sqitch:verify:docker": "Run Sqitch verify inside a docker container against compose DB."
+    "sqitch:verify:docker": "Run Sqitch verify inside a docker container against compose DB.",
+    "seed:pilot-demo": "Seed a fully-populated pilot demo tenant and frozen report.",
+    "provision:tenant": "Provision a pilot tenant, role presets, and starter report."
   },
   "scripts": {
     "prereq:check": "node -v && pnpm -v && docker --version && docker compose version && sqitch --version",
@@ -56,7 +58,9 @@
     "worker:run": "cross-env DATABASE_URL=postgres://postgres:esg@localhost:5432/esg-os pnpm --filter @jobs/worker run",
     "worker:once": "cross-env DATABASE_URL=postgres://postgres:esg@localhost:5432/esg-os pnpm --filter @jobs/worker once",
     "sqitch:deploy:docker": "powershell.exe -NoProfile -Command \"$p=(Get-Location).Path; docker run --rm --network docker_default -e PGPASSWORD=esg -v \"$p/sql:/work/sql\" -w /work/sql sqitch/sqitch deploy db:pg://postgres:esg@esg_db:5432/esg-os\"",
-    "sqitch:verify:docker": "powershell.exe -NoProfile -Command \"$p=(Get-Location).Path; docker run --rm --network docker_default -e PGPASSWORD=esg -v \"$p/sql:/work/sql\" -w /work/sql sqitch/sqitch verify db:pg://postgres:esg@esg_db:5432/esg-os\""
+    "sqitch:verify:docker": "powershell.exe -NoProfile -Command \"$p=(Get-Location).Path; docker run --rm --network docker_default -e PGPASSWORD=esg -v \"$p/sql:/work/sql\" -w /work/sql sqitch/sqitch verify db:pg://postgres:esg@esg_db:5432/esg-os\"",
+    "seed:pilot-demo": "pnpm --filter @apps/api exec ts-node --transpile-only scripts/seed-pilot-demo.ts",
+    "provision:tenant": "pnpm --filter @apps/api exec ts-node --transpile-only scripts/provision-tenant.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

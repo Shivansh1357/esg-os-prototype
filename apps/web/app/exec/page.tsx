@@ -1,188 +1,184 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getJSON } from '@/lib/api'
+import { useReportContext } from '../report-context'
 
-type KPIs = {
-  totals: { s1:number; s2_loc:number; s2_mkt:number; s3:number }
-  yoy: {
-    prevStart: string; prevEnd: string;
-    totals: { s1:number; s2_loc:number; s2_mkt:number; s3:number };
-    deltaPct: { s1:number|null; s2_loc:number|null; s2_mkt:number|null; s3:number|null }
-  }
-  completeness: { pass:number; fail:number; risk:number; total:number; percent:number }
-  suppliers: { invited:number; responded:number; spendTotal:number; spendCovered:number; coveragePercent:number }
-  approvedFacts: number
-  factorSet?: { id?:string; code?:string; version?:string }
-  at?: string
+type ExecKpi = {
+  name: string
+  value: number | null
+  delta: number | null
+  status: 'GREEN' | 'YELLOW' | 'RED'
+}
+
+type Scope3Breakdown = {
+  internal: number
+  supplier: number
+}
+
+type ExecPayload = {
+  mode: 'live' | 'snapshot'
+  reportId: string
+  isLocked: boolean
+  periodStart: string
+  periodEnd: string
+  calcVersion: number
+  completenessPercent: number
+  scope3Breakdown?: Scope3Breakdown
+  attribution?: string | null
+  kpis: ExecKpi[]
 }
 
 export default function ExecPage() {
-  const [date, setDate] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('qstart') : null) || todayISO())
-  const [kpis, setKpis] = useState<KPIs | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [brief, setBrief] = useState<{ bullets:string[]; generatedAt:string }|null>(null)
-  const [busyBrief, setBusyBrief] = useState(false)
+  const { reportId } = useReportContext()
+  const onboarding = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('onboarding') === '1' : false
+  const onboardingStep = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('step') : null
+  const exec = useQuery({
+    queryKey: ['exec-kpis', reportId],
+    enabled: !!reportId,
+    queryFn: async () => await getJSON<ExecPayload>(`/exec/${reportId}`)
+  })
 
-  const { ps, pe } = useMemo(()=> quarterRange(date), [date])
+  const bullets = useMemo(() => buildBrief(exec.data), [exec.data])
 
-  useEffect(()=> { if (typeof window !== 'undefined') localStorage.setItem('qstart', date) }, [date])
-
-  useEffect(() => {
-    (async () => {
-      setError(null); setKpis(null)
-      try {
-        const j = await getJSON<KPIs>(`/exec/summary?periodStart=${ps}&periodEnd=${pe}`)
-        setKpis(j)
-      } catch (e:any) {
-        setError('Exec summary endpoint not available. Enable Backend D8 /exec/summary to power this page.')
-      }
-    })()
-  }, [ps, pe])
-
-  async function generateBrief() {
-    if (!kpis) return
-    setBusyBrief(true); setError(null)
-    try {
-      const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ai/brief/monthly`, {
-        method:'POST',
-        headers: {
-          'content-type':'application/json',
-          'x-tenant-id': process.env.NEXT_PUBLIC_TENANT_ID!,
-          'x-user-id': process.env.NEXT_PUBLIC_USER_ID!,
-        },
-        body: JSON.stringify({ periodStart: ps, periodEnd: pe, kpis })
-      })
-      if (r.ok) {
-        const j = await r.json() as { bullets: string[] }
-        setBrief({ bullets: j.bullets ?? [], generatedAt: new Date().toISOString() })
-      } else {
-        setBrief({ bullets: localBrief(kpis, ps, pe), generatedAt: new Date().toISOString() })
-      }
-    } catch {
-      setBrief({ bullets: localBrief(kpis, ps, pe), generatedAt: new Date().toISOString() })
-    } finally {
-      setBusyBrief(false)
-    }
+  if (!reportId) {
+    return (
+      <div>
+        <h2 style={{ fontSize: 18, marginBottom: 6 }}>Executive Cockpit</h2>
+        <small>Select a report from Reports page to view KPI cockpit.</small>
+      </div>
+    )
   }
 
   return (
     <div>
-      <header style={{ display:'flex', justifyContent:'space-between', alignItems:'end', gap:12 }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 12 }}>
         <div>
-          <h2 style={{ fontSize:18, marginBottom:6 }}>Executive Cockpit</h2>
-          <small>Fast, single-call KPIs. Generate a monthly brief for leadership.</small>
-        </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <div>
-            <label>Quarter start</label>
-            <input type="date" value={toQuarterStart(date)} onChange={e=>setDate(e.target.value)} />
-          </div>
-          <div>
-            <label>Period</label>
-            <div style={{ padding:8, border:'1px solid #233', borderRadius:8 }}>{ps} → {pe}</div>
-          </div>
+          <h2 style={{ fontSize: 18, marginBottom: 6 }}>Executive Cockpit</h2>
+          <small>Backend-authored KPI payload for decision review.</small>
         </div>
       </header>
 
-      {error && (
-        <div style={{ marginTop:12, padding:10, border:'1px solid #442222', background:'#2a1420', borderRadius:8 }}>
-          {error}
+      {exec.data && (
+        <div
+          data-test="exec-mode-banner"
+          style={{
+            marginTop: 12,
+            padding: 10,
+            border: `1px solid ${exec.data.mode === 'snapshot' ? '#274' : '#345'}`,
+            borderRadius: 8,
+            background: exec.data.mode === 'snapshot' ? '#0f2318' : '#111a2b',
+            fontSize: 13
+          }}
+        >
+          Mode: {exec.data.mode === 'snapshot' ? 'Snapshot' : 'Live'} • Period {exec.data.periodStart} → {exec.data.periodEnd}
+          {exec.data.isLocked && (
+            <span data-test="exec-calc-version-badge" style={{ marginLeft: 8 }}>
+              • Calc v{exec.data.calcVersion}
+            </span>
+          )}
+        </div>
+      )}
+      {onboarding && onboardingStep === '4' && (
+        <div data-test="onboarding-tooltip-step-4" style={{ marginTop: 10, padding: 10, border: '1px solid #345', borderRadius: 8, background: '#111a2b' }}>
+          Step 4 complete: Review KPIs in Exec. Next: invite suppliers from the Suppliers page.
         </div>
       )}
 
-      {kpis && (
+      {exec.isPending && <p style={{ marginTop: 12 }}>Loading KPIs…</p>}
+      {exec.isError && (
+        <div style={{ marginTop: 12, padding: 10, border: '1px solid #442222', background: '#2a1420', borderRadius: 8 }}>
+          Failed to load executive KPIs.
+        </div>
+      )}
+
+      {exec.data && (
         <>
-          <section style={{ marginTop:12, display:'grid', gridTemplateColumns:'repeat(4, minmax(220px,1fr))', gap:12 }}>
-            <Tile label="Scope 1" value={fmt(kpis.totals.s1)} unit="kgCO₂e" />
-            <Tile label="Scope 2 (loc)" value={fmt(kpis.totals.s2_loc)} unit="kgCO₂e" />
-            <Tile label="Scope 2 (mkt)" value={fmt(kpis.totals.s2_mkt)} unit="kgCO₂e" />
-            <Tile label="Scope 3" value={fmt(kpis.totals.s3)} unit="kgCO₂e" />
-
-            <DeltaTile label="Δ S1 vs prev" deltaPct={kpis.yoy.deltaPct.s1} />
-            <DeltaTile label="Δ S2 (loc)" deltaPct={kpis.yoy.deltaPct.s2_loc} />
-            <DeltaTile label="Δ S2 (mkt)" deltaPct={kpis.yoy.deltaPct.s2_mkt} />
-            <DeltaTile label="Δ S3 vs prev" deltaPct={kpis.yoy.deltaPct.s3} />
-
-            <Tile label="Compliance completeness" value={`${(kpis.completeness.percent||0).toFixed(0)}%`} hint={`${kpis.completeness.pass}/${kpis.completeness.total} PASS`} />
-            <Tile label="Findings — FAIL" value={kpis.completeness.fail} tone="bad" />
-            <Tile label="Supplier coverage" value={`${(kpis.suppliers.coveragePercent||0).toFixed(0)}%`} hint={`${kpis.suppliers.responded}/${kpis.suppliers.invited} responded`} />
-            <Tile label="Approved facts" value={kpis.approvedFacts} />
+          <section
+            data-test="exec-kpi-grid"
+            style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(220px,1fr))', gap: 12 }}
+          >
+            {exec.data.kpis.slice(0, 12).map((kpi) => (
+              <KpiTile key={kpi.name} kpi={kpi} />
+            ))}
           </section>
 
-          <section style={{ marginTop:16, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ fontSize:12, opacity:0.8 }}>
-              Factor set: <b>{kpis.factorSet?.code || 'Default'}</b>{kpis.factorSet?.version ? ` v${kpis.factorSet.version}` : ''} •{' '}
-              Prev qtr: {kpis.yoy.prevStart} → {kpis.yoy.prevEnd}
-            </div>
-            <div style={{ display:'flex', gap:8 }}>
-              <button data-test="generate-brief" onClick={generateBrief} disabled={busyBrief}>
-                {busyBrief ? 'Generating…' : 'Generate Brief'}
-              </button>
-            </div>
-          </section>
-
-          {brief && (
-            <section style={{ marginTop:12, border:'1px solid #223', borderRadius:10, padding:12, background:'#0b1020' }}>
-              <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <h3 style={{ marginTop:0 }}>Monthly Brief</h3>
-                <small style={{ opacity:0.7 }}>Generated at {new Date(brief.generatedAt).toLocaleString()}</small>
+          <section style={{ marginTop: 12, border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
+            <h3 style={{ marginTop: 0 }}>Scope 3 Breakdown</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(220px,1fr))', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>Internal Scope 3</div>
+                <div data-test="scope3-internal-breakdown" style={{ fontSize: 22, fontWeight: 600 }}>
+                  {formatValue(exec.data.scope3Breakdown?.internal ?? null)}
+                </div>
               </div>
-              <ul style={{ margin:'6px 0 0 18px' }}>
-                {brief.bullets.map((b,i)=><li key={i}>{b}</li>)}
-              </ul>
-            </section>
-          )}
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>Supplier Scope 3</div>
+                <div data-test="scope3-supplier-breakdown" style={{ fontSize: 22, fontWeight: 600 }}>
+                  {formatValue(exec.data.scope3Breakdown?.supplier ?? null)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>Coverage Delta</div>
+                <div data-test="supplier-coverage-delta" style={{ fontSize: 22, fontWeight: 600 }}>
+                  {formatDelta(exec.data.kpis.find((k) => k.name === 'Supplier coverage %')?.delta)}
+                </div>
+              </div>
+            </div>
+            {exec.data.attribution && (
+              <div data-test="scope3-attribution-note" style={{ marginTop: 8, fontSize: 13, opacity: 0.9 }}>
+                {exec.data.attribution}
+              </div>
+            )}
+          </section>
+
+          <section style={{ marginTop: 16, border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
+            <h3 style={{ marginTop: 0 }}>Executive Brief</h3>
+            <ul style={{ margin: '6px 0 0 18px' }}>
+              {bullets.map((bullet, i) => <li key={i}>{bullet}</li>)}
+            </ul>
+          </section>
         </>
       )}
     </div>
   )
 }
 
-function Tile({ label, value, unit, hint, tone }: { label:string; value:any; unit?:string; hint?:string; tone?:'good'|'bad'|undefined }) {
-  const border = tone==='bad' ? '#3a0b0b' : tone==='good' ? '#0d2f21' : '#223'
+function KpiTile({ kpi }: { kpi: ExecKpi }) {
+  const tone = kpi.status === 'GREEN' ? '#0d2f21' : kpi.status === 'YELLOW' ? '#5e4d16' : '#3a0b0b'
+  const delta = typeof kpi.delta === 'number' ? `${kpi.delta > 0 ? '+' : ''}${kpi.delta.toFixed(2)}%` : '—'
   return (
-    <div style={{ border:`1px solid ${border}`, borderRadius:10, padding:12, background:'#0b1020' }}>
-      <div style={{ fontSize:12, opacity:0.8 }}>{label}</div>
-      <div style={{ fontSize:24, fontWeight:600, marginTop:6 }}>
-        {value} {unit ? <span style={{ fontSize:12 }}>{unit}</span> : null}
+    <div data-test="exec-kpi-tile" style={{ border: `1px solid ${tone}`, borderRadius: 10, padding: 12, background: '#0b1020' }}>
+      <div style={{ fontSize: 12, opacity: 0.8 }}>{kpi.name}</div>
+      <div style={{ fontSize: 24, fontWeight: 600, marginTop: 6 }}>
+        {kpi.value === null ? '—' : Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(kpi.value)}
       </div>
-      {hint && <div style={{ fontSize:12, opacity:0.8, marginTop:4 }}>{hint}</div>}
+      <div style={{ fontSize: 12, marginTop: 4 }}>
+        Δ {delta} • <span>{kpi.status}</span>
+      </div>
     </div>
   )
 }
 
-function DeltaTile({ label, deltaPct }: { label:string; deltaPct:number|null }) {
-  const good = typeof deltaPct === 'number' ? deltaPct <= 0 : false
-  const color = typeof deltaPct === 'number' ? (good ? '#5fcf65' : '#ff7474') : '#aaa'
-  const text = typeof deltaPct === 'number' ? `${deltaPct>0?'▲':deltaPct<0?'▼':''} ${Math.abs(deltaPct).toFixed(2)}%` : '—'
-  return (
-    <div style={{ border:'1px solid #223', borderRadius:10, padding:12, background:'#0b1020' }}>
-      <div style={{ fontSize:12, opacity:0.8 }}>{label}</div>
-      <div style={{ fontSize:24, fontWeight:600, marginTop:6, color }}>{text}</div>
-      <div style={{ fontSize:12, opacity:0.8, marginTop:4 }}>vs previous quarter</div>
-    </div>
-  )
+function buildBrief(payload: ExecPayload | undefined) {
+  if (!payload) return []
+  const total = payload.kpis.find((k) => k.name === 'Total emissions')
+  const compliance = payload.kpis.find((k) => k.name === 'Compliance %')
+  const quality = payload.kpis.find((k) => k.name === 'Data quality score')
+  return [
+    `Total emissions are ${formatValue(total?.value)} with delta ${formatDelta(total?.delta)} versus previous quarter.`,
+    `Compliance is ${formatValue(compliance?.value)}% and in ${compliance?.status ?? 'YELLOW'} state.`,
+    `Data quality score is ${formatValue(quality?.value)} with status ${quality?.status ?? 'YELLOW'}.`
+  ]
 }
 
-function iso(d: Date) { return d.toISOString().slice(0,10) }
-function todayISO(){ return iso(new Date()) }
-function toQuarterStart(s: string){ const d=new Date(s); const qs=new Date(d.getFullYear(), Math.floor(d.getMonth()/3)*3, 1); return iso(qs) }
-function quarterRange(date:string){ const d=new Date(date); const qs=new Date(d.getFullYear(), Math.floor(d.getMonth()/3)*3, 1); const qe=new Date(qs.getFullYear(), qs.getMonth()+3, 0); return { ps: iso(qs), pe: iso(qe) } }
-function fmt(n:number){ try{ return Intl.NumberFormat(undefined,{ maximumFractionDigits:2}).format(n) } catch { return String(n) } }
-
-function localBrief(k: KPIs, ps:string, pe:string): string[] {
-  const ups = (x:number|null)=> typeof x==='number' && x>0
-  const downs = (x:number|null)=> typeof x==='number' && x<0
-  const hot = ['s1','s2_loc','s2_mkt','s3'].filter((kpi)=>ups((k.yoy.deltaPct as any)[kpi])).map(x=>x.toUpperCase().replace('_',' '))
-  const cool = ['s1','s2_loc','s2_mkt','s3'].filter((kpi)=>downs((k.yoy.deltaPct as any)[kpi])).map(x=>x.toUpperCase().replace('_',' '))
-  const bullets:string[] = []
-  bullets.push(`Emissions for ${ps} → ${pe}: S1 ${fmt(k.totals.s1)}, S2(loc) ${fmt(k.totals.s2_loc)}, S2(mkt) ${fmt(k.totals.s2_mkt)}, S3 ${fmt(k.totals.s3)}.`)
-  if (hot.length) bullets.push(`Increases vs prev qtr in ${hot.join(', ')} — investigate drivers and recent operational changes.`)
-  if (cool.length) bullets.push(`Reductions vs prev qtr in ${cool.join(', ')} — sustain measures and document learnings.`)
-  bullets.push(`Compliance ${k.completeness.percent.toFixed(0)}% complete (${k.completeness.pass}/${k.completeness.total} PASS); ${k.completeness.fail} FAIL, ${k.completeness.risk} RISK.`)
-  bullets.push(`Supplier coverage at ${(k.suppliers.coveragePercent||0).toFixed(0)}% by spend (${k.suppliers.responded}/${k.suppliers.invited} responded); follow up with non-responders.`)
-  return bullets.slice(0,3)
+function formatValue(value?: number | null) {
+  if (typeof value !== 'number') return 'N/A'
+  return Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)
 }
 
-
+function formatDelta(delta?: number | null) {
+  if (typeof delta !== 'number') return 'N/A'
+  return `${delta > 0 ? '+' : ''}${delta.toFixed(2)}%`
+}

@@ -1,5 +1,8 @@
 # ESG OS Prototype Monorepo
 
+![CI Strict JWT](https://github.com/Shivansh1357/esg-os-prototype/actions/workflows/ci-strict-jwt.yml/badge.svg)
+![CI Deploy Smoke](https://github.com/Shivansh1357/esg-os-prototype/actions/workflows/ci-deploy-smoke.yml/badge.svg)
+
 A SQL-first, multi-tenant ESG SaaS prototype (India-first, BRSR).
 
 Monorepo contains:
@@ -80,3 +83,5 @@ Project-wide execution docs:
 - `Progress.md`
 - `architecture.md`
 - `run_book.md`
+- `PILOT_RUNBOOK.md`
+- `PILOT_VALIDATION_PACK.md`

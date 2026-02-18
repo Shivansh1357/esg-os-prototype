@@ -1,10 +1,14 @@
+import { getClientRole } from '@/lib/role'
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const process: any;
 const API = process.env.NEXT_PUBLIC_API_URL!;
 const headers = () => ({
   'Content-Type': 'application/json',
+  ...(process.env.NEXT_PUBLIC_AUTH_TOKEN ? { Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}` } : {}),
   'x-tenant-id': process.env.NEXT_PUBLIC_TENANT_ID!,
   'x-user-id': process.env.NEXT_PUBLIC_USER_ID!,
+  'x-role': getClientRole(),
 });
 
 export async function gql<T>(query: string, variables?: Record<string, any>): Promise<T> {

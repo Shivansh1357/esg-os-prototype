@@ -1,6 +1,8 @@
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { Request } from 'express';
 import { pgClientFrom } from '../../db/reqpg';
+import { enforceRateLimit, requireRole } from '../../rbac/access';
+import { incMetric } from '../../observability/metrics';
 
 @Resolver()
 export class ReportsResolver {
@@ -10,6 +12,7 @@ export class ReportsResolver {
     @Args('template') template: string,
     @Context() ctx: any
   ) {
+    requireRole('ADMIN', 'MEMBER');
     const client = pgClientFrom(ctx.req as Request);
     const t = await client.query(`SELECT current_setting('app.tenant_id', true) AS tid`);
     const tid = t.rows[0].tid as string;
@@ -35,9 +38,13 @@ export class ReportsResolver {
 
   @Mutation(() => Boolean)
   async freezeReport(@Args('reportId') reportId: string, @Context() ctx: any) {
+    requireRole('ADMIN');
+    enforceRateLimit('freeze_report', 10, 60_000);
     const client = pgClientFrom(ctx.req as Request);
     const ids = await client.query(`SELECT current_setting('app.tenant_id', true) AS tid, current_setting('app.user_id', true) AS uid`);
     await client.query(`SELECT esg.freeze_report($1,$2,$3)`, [ids.rows[0].tid, reportId, ids.rows[0].uid]);
+    await client.query(`SELECT esg.record_pilot_event(app.current_tenant(), 'first_freeze', 1)`);
+    incMetric('freeze_total');
     return true;
   }
 }

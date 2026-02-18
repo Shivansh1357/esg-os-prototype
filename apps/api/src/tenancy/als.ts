@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'async_hooks';
 
-export type TenantContext = { tenantId: string; userId: string; role: 'ADMIN'|'MEMBER'|'AUDITOR' };
+export type TenantContext = { tenantId: string; userId: string; role: 'ADMIN'|'MEMBER'|'AUDITOR'|'SUPPLIER' };
 
 export const ALS = new AsyncLocalStorage<TenantContext>();
 

@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as request from 'supertest';
 import { Pool } from 'pg';
+import { authHeaders } from './utils/jwt';
 
 jest.mock('@aws-sdk/client-s3', () => {
   class PutObjectCommand { input: any; constructor(input: any){ this.input = input; } }
@@ -47,6 +48,7 @@ describe('reports export HTTP integration', () => {
   const periodStart = '2025-07-01';
   const periodEnd = '2025-09-30';
   const userId = '00000000-0000-0000-0000-00000000d601';
+  const seed = Date.now();
 
   beforeAll(async () => {
     process.env.DATABASE_URL = connectionString;
@@ -58,7 +60,7 @@ describe('reports export HTTP integration', () => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      tenantId = (await client.query(`INSERT INTO esg.tenants(name) VALUES('T-D6-HTTP') RETURNING id`)).rows[0].id;
+      tenantId = (await client.query(`INSERT INTO esg.tenants(name) VALUES($1) RETURNING id`, [`T-D6-HTTP-${seed}`])).rows[0].id;
       entityId = (await client.query(
         `INSERT INTO esg.entities(tenant_id,name,etype) VALUES($1,'HQ','ORG') RETURNING id`,
         [tenantId]
@@ -122,8 +124,7 @@ describe('reports export HTTP integration', () => {
     (global as any).__mockLastExportHtml = '';
     const draftRes = await request(app.getHttpServer())
       .post(`/reports/${draftReportId}/export?format=pdf`)
-      .set('x-tenant-id', tenantId)
-      .set('x-user-id', userId);
+      .set(authHeaders({ tenantId, userId, role: 'ADMIN' }));
     if (draftRes.status !== 201) {
       throw new Error(`draft export failed: ${draftRes.status} ${JSON.stringify(draftRes.body)}`);
     }
@@ -150,8 +151,7 @@ describe('reports export HTTP integration', () => {
     (global as any).__mockLastExportHtml = '';
     const frozenRes = await request(app.getHttpServer())
       .post(`/reports/${frozenReportId}/export?format=pdf`)
-      .set('x-tenant-id', tenantId)
-      .set('x-user-id', userId);
+      .set(authHeaders({ tenantId, userId, role: 'ADMIN' }));
     if (frozenRes.status !== 201) {
       throw new Error(`frozen export failed: ${frozenRes.status} ${JSON.stringify(frozenRes.body)}`);
     }

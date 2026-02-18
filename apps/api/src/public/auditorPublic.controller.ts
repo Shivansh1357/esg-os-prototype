@@ -1,11 +1,10 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, OnModuleDestroy, Param, Post } from '@nestjs/common';
 import { Pool } from 'pg';
 import { verifyAuditorToken } from './auditorToken';
 import ExcelJS from 'exceljs';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const s3 = new S3Client({
   region:'us-east-1',
   forcePathStyle:true,
@@ -14,11 +13,17 @@ const s3 = new S3Client({
 });
 
 @Controller()
-export class AuditorPublicController {
+export class AuditorPublicController implements OnModuleDestroy {
+  private readonly pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  async onModuleDestroy() {
+    await this.pool.end();
+  }
+
   @Get('/public/auditor/:token/lineage')
   async lineage(@Param('token') token: string) {
     const c = verifyAuditorToken(token);
-    const client = await pool.connect();
+    const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [c.tid]);
@@ -32,7 +37,7 @@ export class AuditorPublicController {
   @Post('/public/auditor/:token/assurance')
   async assurance(@Param('token') token: string): Promise<{url:string}> {
     const c = verifyAuditorToken(token);
-    const client = await pool.connect();
+    const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [c.tid]);

@@ -2,6 +2,7 @@ import { Args, Context, Float, Mutation, Query, Resolver } from '@nestjs/graphql
 import { Request } from 'express';
 import { pgClientFrom } from '../../db/reqpg';
 import { Finding } from '../schema.gql';
+import { requireRole } from '../../rbac/access';
 
 @Resolver()
 export class ComplianceResolver {
@@ -44,6 +45,7 @@ export class ComplianceResolver {
     @Args('evidenceUrl') evidenceUrl: string,
     @Context() ctx?: { req: Request }
   ) {
+    requireRole('ADMIN', 'MEMBER');
     const client = pgClientFrom(ctx?.req as Request);
     const v = await client.query(`SELECT esg.validate_evidence_url($1) AS ok`, [evidenceUrl]);
     if (!v.rows[0]?.ok) throw new Error('Invalid evidence URL (must be under allowed bucket/domain)');

@@ -112,6 +112,7 @@ export default function SupplierInviteModal({
         method: 'POST',
         headers: {
           'content-type': 'application/json',
+          ...(process.env.NEXT_PUBLIC_AUTH_TOKEN ? { Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}` } : {}),
           'x-tenant-id': process.env.NEXT_PUBLIC_TENANT_ID!,
           'x-user-id': process.env.NEXT_PUBLIC_USER_ID!,
         },

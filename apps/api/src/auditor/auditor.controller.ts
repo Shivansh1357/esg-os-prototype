@@ -2,6 +2,7 @@ import { Controller, Post, Req, Body } from '@nestjs/common';
 import { Request } from 'express';
 import { pgClientFrom } from '../db/reqpg';
 import { signAuditorToken } from '../public/auditorToken';
+import { requireRole } from '../rbac/access';
 
 type AccessIn = { reportId: string };
 type AccessOut = { url: string; expiresAt: string };
@@ -10,6 +11,7 @@ type AccessOut = { url: string; expiresAt: string };
 export class AuditorController {
   @Post('/auditor/access')
   async createAccess(@Body() body: AccessIn, @Req() req: Request): Promise<AccessOut> {
+    requireRole('ADMIN', 'MEMBER');
     const client = pgClientFrom(req);
     const ttl = Number(process.env.AUDITOR_TTL_HOURS || '168');
     const origin = process.env.PUBLIC_ORIGIN || 'http://localhost:3001';

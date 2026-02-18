@@ -4,6 +4,8 @@ import { pgClientFrom } from '../../db/reqpg';
 import { UpsertFactInput, Fact } from '../schema.gql';
 import { enqueueRecalc } from '../../queue/enqueue';
 import { getDefaultFactorSetId } from '../../db/factors';
+import { enforceRateLimit, requireRole } from '../../rbac/access';
+import { incMetric } from '../../observability/metrics';
 
 @Resolver()
 export class FactsResolver {
@@ -55,17 +57,21 @@ export class FactsResolver {
     @Args('input', { type: () => UpsertFactInput }) input: UpsertFactInput,
     @Context() ctx?: { req: Request }
   ) {
+    requireRole('ADMIN', 'MEMBER');
     const client = pgClientFrom(ctx?.req as Request);
     const t = await client.query(`SELECT current_setting('app.tenant_id', true) AS t, current_setting('app.user_id', true) AS u`);
     const tenant = t.rows[0].t; const actor = t.rows[0].u;
     const sql = `SELECT esg.upsert_fact($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) AS id`;
     const params = [tenant, input.entityId, input.metricCode, input.periodStart, input.periodEnd, input.value, input.unit, input.sourceType ?? null, input.sourceRef ?? null, actor];
     const r = await client.query(sql, params);
+    await client.query(`SELECT esg.record_pilot_event(app.current_tenant(), 'first_fact', 1)`);
     return r.rows[0].id as string;
   }
 
   @Mutation(() => Boolean)
   async approveFact(@Args('id', { type: () => ID }) id: string, @Context() ctx?: { req: Request }) {
+    requireRole('ADMIN');
+    enforceRateLimit('approve_fact', 30, 60_000);
     const client = pgClientFrom(ctx?.req as Request);
     const sel = await client.query(
       `SELECT id, status, entity_id, period_start, period_end
@@ -88,8 +94,11 @@ export class FactsResolver {
       periodEnd: sel.rows[0].period_end.toISOString().slice(0,10),
       factorSetId: fsId
     });
+    incMetric('recalc_total');
     // Optional: refresh compliance findings for this period
     await client.query(`SELECT esg.evaluate_brsr(app.current_tenant(), $1, $2)`, [sel.rows[0].period_start, sel.rows[0].period_end]);
+    await client.query(`SELECT esg.refresh_exec_kpi_base()`);
+    await client.query(`SELECT esg.record_pilot_event(app.current_tenant(), 'first_approval', 1)`);
     return true;
   }
 }
