@@ -57,8 +57,8 @@
     "worker:install": "cross-env DATABASE_URL=postgres://postgres:esg@localhost:5432/esg-os graphile-worker --schema-only",
     "worker:run": "cross-env DATABASE_URL=postgres://postgres:esg@localhost:5432/esg-os pnpm --filter @jobs/worker run",
     "worker:once": "cross-env DATABASE_URL=postgres://postgres:esg@localhost:5432/esg-os pnpm --filter @jobs/worker once",
-    "sqitch:deploy:docker": "powershell.exe -NoProfile -Command \"$p=(Get-Location).Path; docker run --rm --network docker_default -e PGPASSWORD=esg -v \"$p/sql:/work/sql\" -w /work/sql sqitch/sqitch deploy db:pg://postgres:esg@esg_db:5432/esg-os\"",
-    "sqitch:verify:docker": "powershell.exe -NoProfile -Command \"$p=(Get-Location).Path; docker run --rm --network docker_default -e PGPASSWORD=esg -v \"$p/sql:/work/sql\" -w /work/sql sqitch/sqitch verify db:pg://postgres:esg@esg_db:5432/esg-os\"",
+    "sqitch:deploy:docker": "sh -c 'docker run --rm --network container:esg_db -e PGPASSWORD=esg -v \"$(pwd)/sql:/work/sql\" -w /work/sql sqitch/sqitch deploy db:pg://postgres:esg@127.0.0.1:5432/esg-os'",
+    "sqitch:verify:docker": "sh -c 'docker run --rm --network container:esg_db -e PGPASSWORD=esg -v \"$(pwd)/sql:/work/sql\" -w /work/sql sqitch/sqitch verify db:pg://postgres:esg@127.0.0.1:5432/esg-os'",
     "seed:pilot-demo": "pnpm --filter @apps/api exec ts-node --transpile-only scripts/seed-pilot-demo.ts",
     "provision:tenant": "pnpm --filter @apps/api exec ts-node --transpile-only scripts/provision-tenant.ts"
   },

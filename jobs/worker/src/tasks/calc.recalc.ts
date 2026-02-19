@@ -11,7 +11,23 @@ type Payload = {
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const task: Task = async (payload: Payload, { logger }) => {
+function isPayload(payload: unknown): payload is Payload {
+  if (!payload || typeof payload !== 'object') return false;
+  const p = payload as Record<string, unknown>;
+  return (
+    typeof p.tenantId === 'string' &&
+    typeof p.entityId === 'string' &&
+    typeof p.periodStart === 'string' &&
+    typeof p.periodEnd === 'string' &&
+    typeof p.factorSetId === 'string'
+  );
+}
+
+const task: Task = async (payload, { logger }) => {
+  if (!isPayload(payload)) {
+    logger.error('calc.recalc FAIL: invalid payload');
+    throw new Error('Invalid calc.recalc payload');
+  }
   const { tenantId, entityId, periodStart, periodEnd, factorSetId } = payload;
   const client = await pool.connect();
   const started = Date.now();
@@ -35,5 +51,4 @@ const task: Task = async (payload: Payload, { logger }) => {
 };
 
 export default task;
-
 

@@ -9,19 +9,23 @@ type ReportContextValue = {
 
 const ReportContext = createContext<ReportContextValue | null>(null)
 
+function readReportIdFromLocation(): string | null {
+  if (typeof window === 'undefined') return null
+  const params = new URLSearchParams(window.location.search)
+  const idFromUrl = params.get('reportId')
+  if (idFromUrl) {
+    localStorage.setItem('reportId', idFromUrl)
+    return idFromUrl
+  }
+  const cached = localStorage.getItem('reportId')
+  return cached || null
+}
+
 export function ReportContextProvider({ children }: { children: React.ReactNode }) {
-  const [reportId, setReportIdState] = useState<string | null>(null)
+  const [reportId, setReportIdState] = useState<string | null>(readReportIdFromLocation)
 
   const syncFromLocation = () => {
-    const params = new URLSearchParams(window.location.search)
-    const idFromUrl = params.get('reportId')
-    if (idFromUrl) {
-      setReportIdState(idFromUrl)
-      localStorage.setItem('reportId', idFromUrl)
-      return
-    }
-    const cached = localStorage.getItem('reportId')
-    setReportIdState(cached || null)
+    setReportIdState(readReportIdFromLocation())
   }
 
   useEffect(() => {
