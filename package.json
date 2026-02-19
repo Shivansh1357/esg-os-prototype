@@ -6,7 +6,7 @@
     "prereq:check": "Check required tooling versions (node, pnpm, docker, compose, sqitch).",
     "infra:up": "Start local infrastructure containers (Postgres + MinIO).",
     "infra:down": "Stop local infrastructure containers.",
-    "infra:reset": "Stop and remove infra containers, volumes, and orphans.",
+    "infra:reset": "Stop and remove infra containers, volumes, and orphans. ",
     "infra:logs": "Tail docker compose logs for all infra services.",
     "db:deploy": "Run Sqitch deploy against dockerized Postgres.",
     "db:verify": "Run Sqitch verify against dockerized Postgres.",
