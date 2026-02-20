@@ -9,6 +9,26 @@ import ReportContextBanner from '@/components/ReportContextBanner'
 import { ReportListItem, ReportMeta } from '@/lib/reportMeta'
 import { useReportContext } from '../report-context'
 import { getClientRole } from '@/lib/role'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import {
+  ActionBar,
+  DataTableShell,
+  EmptyState,
+  PageHeader,
+  SectionCard,
+  StatusBanner,
+} from '@/components/product'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const CREATE = `
 mutation C($name:String!, $template:String!){
@@ -177,136 +197,186 @@ export default function ReportsPage() {
   })
 
   return (
-    <div>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 12, marginBottom: 12 }}>
-        <div>
-          <h2 style={{ fontSize: 18, marginBottom: 6 }}>Reports</h2>
-          <small>Create a draft, export, and manage auditor access & freeze.</small>
-        </div>
-        <div style={{ minWidth: 360 }}>
-          <label>Active report context</label>
-          <select
-            data-test="report-selector"
-            style={{ width: '100%' }}
-            value={reportId ?? ''}
-            onChange={(e) => setReportId(e.target.value || null)}
-          >
-            <option value="">Select report…</option>
-            {selectorOptions.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.periodStart} → {item.periodEnd} • {item.isLocked ? 'Frozen' : 'Draft'}
-              </option>
-            ))}
-          </select>
-        </div>
-      </header>
+    <div className="space-y-4">
+      <PageHeader
+        title="Reports"
+        description="Create drafts, export report artifacts, and manage auditor access and freeze controls."
+        right={(
+          <div className="w-full min-w-[280px] space-y-2 md:w-96">
+            <Label>Active report context</Label>
+            <select
+              data-test="report-selector"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={reportId ?? ''}
+              onChange={(e) => setReportId(e.target.value || null)}
+            >
+              <option value="">Select report…</option>
+              {selectorOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.periodStart} → {item.periodEnd} • {item.isLocked ? 'Frozen' : 'Draft'}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      />
 
       <ReportContextBanner meta={meta} />
       {meta && (
-        <div
-          data-test="export-mode-banner"
-          style={{ marginBottom: 12, padding: 10, border: '1px solid #223', borderRadius: 8, background: '#0f1630' }}
-        >
+        <StatusBanner testId="export-mode-banner" tone="info">
           {meta.isLocked ? 'Snapshot Mode' : 'Live Mode'}
-        </div>
+        </StatusBanner>
       )}
       {onboarding && onboardingStep === '3' && (
-        <div data-test="onboarding-tooltip-step-3" style={{ marginBottom: 12, padding: 10, border: '1px solid #345', borderRadius: 8, background: '#111a2b' }}>
+        <StatusBanner testId="onboarding-tooltip-step-3" tone="info">
           Step 3: Freeze report after approvals and compliance. Step 4: View executive cockpit in{' '}
           <Link href={`/exec${reportId ? `?reportId=${reportId}&onboarding=1&step=4` : '?onboarding=1&step=4'}`}>Exec</Link>.
-        </div>
+        </StatusBanner>
       )}
       {isAuditor && (
-        <div
-          data-test="auditor-readonly-banner"
-          style={{ marginBottom: 12, padding: 10, border: '1px solid #463', borderRadius: 8, background: '#1f1a12' }}
-        >
+        <StatusBanner testId="auditor-readonly-banner" tone="warning">
           Auditor View (Read-only)
-        </div>
+        </StatusBanner>
       )}
 
-      <section style={{ border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020', marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Report Metadata</h3>
-        <div data-test="report-status" style={{ marginBottom: 8 }}>
+      <SectionCard title="Report Metadata">
+        <div data-test="report-status" className="mb-2 text-sm">
           <b>Status:</b> {meta ? (meta.isLocked ? 'Frozen' : 'Draft') : 'Not selected'}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(220px,1fr))', gap: 8, fontSize: 13 }}>
+        <div className="grid gap-2 text-sm md:grid-cols-2">
           <div><b>Factor Set:</b> {meta?.factorSetCode ? `${meta.factorSetCode} ${meta.factorSetVersion || ''}` : '—'}</div>
           <div data-test="calc-version"><b>Calc Version:</b> {meta?.calcVersion ?? '—'}</div>
           <div data-test="completeness"><b>Completeness %:</b> {meta?.completenessPercent ?? '—'}</div>
           <div><b>Frozen At:</b> {meta?.frozenAt ? new Date(meta.frozenAt).toLocaleString() : '—'}</div>
         </div>
-      </section>
+      </SectionCard>
 
-      <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
-        <div style={{ border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
-          <h3 style={{ marginTop: 0 }}>Generate Draft</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 8 }}>
-            <div><label>Report name</label><input value={name} onChange={e => setName(e.target.value)} placeholder="BRSR Draft - YYYY-MM-DD" /></div>
-            <div><label>Template</label><select value={template} onChange={e => setTemplate(e.target.value as any)}><option value="BRSR">BRSR</option></select></div>
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <SectionCard title="Generate Draft">
+          <div className="grid gap-2 md:grid-cols-[1fr_240px]">
+            <div className="space-y-2">
+              <Label>Report name</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="BRSR Draft - YYYY-MM-DD" />
+            </div>
+            <div className="space-y-2">
+              <Label>Template</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={template}
+                onChange={e => setTemplate(e.target.value as any)}
+              >
+                <option value="BRSR">BRSR</option>
+              </select>
+            </div>
           </div>
-          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+          <ActionBar className="mt-3">
             {!isAuditor && (
-              <button data-test="generate-draft" onClick={() => create.mutate()} disabled={create.isPending}>{create.isPending ? 'Creating...' : 'Generate Draft'}</button>
+              <Button data-test="generate-draft" onClick={() => create.mutate()} disabled={create.isPending}>
+                {create.isPending ? 'Creating...' : 'Generate Draft'}
+              </Button>
             )}
             {reportId && (
               <>
-                <button data-test="export-pdf" onClick={() => exportReport('pdf')} disabled={exporting === 'pdf' || !canExport} title={!canExport ? 'Auditors can export frozen reports only.' : ''}>Export PDF</button>
-                <button data-test="export-xlsx" onClick={() => exportReport('xlsx')} disabled={exporting === 'xlsx' || !canExport} title={!canExport ? 'Auditors can export frozen reports only.' : ''}>Export Excel</button>
-                <button data-test="export-json" onClick={() => exportReport('json')} disabled={exporting === 'json' || !canExport} title={!canExport ? 'Auditors can export frozen reports only.' : ''}>Export JSON</button>
+                <Button
+                  variant="outline"
+                  data-test="export-pdf"
+                  onClick={() => exportReport('pdf')}
+                  disabled={exporting === 'pdf' || !canExport}
+                  title={!canExport ? 'Auditors can export frozen reports only.' : ''}
+                >
+                  Export PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  data-test="export-xlsx"
+                  onClick={() => exportReport('xlsx')}
+                  disabled={exporting === 'xlsx' || !canExport}
+                  title={!canExport ? 'Auditors can export frozen reports only.' : ''}
+                >
+                  Export Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  data-test="export-json"
+                  onClick={() => exportReport('json')}
+                  disabled={exporting === 'json' || !canExport}
+                  title={!canExport ? 'Auditors can export frozen reports only.' : ''}
+                >
+                  Export JSON
+                </Button>
               </>
             )}
-          </div>
-          {msg && <div style={{ marginTop: 10, fontSize: 12, opacity: 0.9 }}>{msg}</div>}
-        </div>
+          </ActionBar>
+          {msg && <p className="mt-2 text-xs text-muted-foreground">{msg}</p>}
+        </SectionCard>
 
-        <div style={{ border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
-          <h3 style={{ marginTop: 0 }}>Sections</h3>
-          {!reportId && <p style={{ opacity: 0.8 }}>Select or create a report to view sections.</p>}
+        <SectionCard title="Sections">
+          {!reportId && <p className="text-sm text-muted-foreground">Select or create a report to view sections.</p>}
           {reportId && (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <ul className="space-y-1">
               {['SUMMARY', 'EMISSIONS', 'COMPLIANCE'].map(code => (
-                <li key={code} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #223' }}>
+                <li key={code} className="flex items-center justify-between border-b border-border/70 py-2 last:border-b-0">
                   <span><code>{code}</code></span>
-                  <span style={{ opacity: 0.8 }}>{isLocked ? 'LOCKED' : 'DRAFT'}</span>
+                  <Badge variant={isLocked ? 'secondary' : 'outline'}>{isLocked ? 'LOCKED' : 'DRAFT'}</Badge>
                 </li>
               ))}
             </ul>
           )}
-        </div>
-      </section>
+        </SectionCard>
+      </div>
 
-      <section style={{ marginTop: 16, border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
-        <h3 style={{ marginTop: 0 }}>Auditor Tools</h3>
-        {!reportId && <p style={{ opacity: 0.8 }}>Select a report to enable this panel.</p>}
+      <SectionCard title="Auditor Tools">
+        {!reportId && <p className="text-sm text-muted-foreground">Select a report to enable this panel.</p>}
         {reportId && (
           <>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button data-test="auditor-generate" onClick={generateAuditorLink}>Generate access link</button>
-              <button data-test="lineage-open" onClick={openLineage} disabled={!auditor?.token}>View lineage</button>
-              <button data-test="assurance-export" onClick={exportAssurance} disabled={!auditor?.token || assuring}>{assuring ? 'Exporting...' : 'Assurance worksheet'}</button>
+            <ActionBar>
+              <Button data-test="auditor-generate" variant="outline" onClick={generateAuditorLink}>Generate access link</Button>
+              <Button data-test="lineage-open" variant="outline" onClick={openLineage} disabled={!auditor?.token}>View lineage</Button>
+              <Button data-test="assurance-export" variant="outline" onClick={exportAssurance} disabled={!auditor?.token || assuring}>{assuring ? 'Exporting...' : 'Assurance worksheet'}</Button>
               {isAdmin && (
-                <button data-test="freeze-report" onClick={() => freeze.mutate()} disabled={freezing || isLocked} title={isLocked ? 'Report is frozen. Unlocking requires creating a new report version.' : ''}>
+                <Button
+                  data-test="freeze-report"
+                  variant={isLocked ? 'secondary' : 'default'}
+                  onClick={() => freeze.mutate()}
+                  disabled={freezing || isLocked}
+                  title={isLocked ? 'Report is frozen. Unlocking requires creating a new report version.' : ''}
+                >
                   {freezing ? 'Freezing...' : isLocked ? 'Frozen' : 'Freeze report'}
-                </button>
+                </Button>
               )}
-            </div>
+            </ActionBar>
           </>
         )}
-      </section>
+      </SectionCard>
 
-      <section style={{ marginTop: 16 }}>
-        <h3>Exports</h3>
-        {artifacts.length === 0 && <p style={{ opacity: 0.8 }}>No exports yet.</p>}
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 8 }}>
-          {artifacts.map((a, i) => (
-            <li key={`${a.format}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', border: '1px solid #223', borderRadius: 10, padding: 10 }}>
-              <span><b>{a.format.toUpperCase()}</b> ({a.mode})</span>
-              <a href={a.url} target="_blank" rel="noreferrer">Download</a>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <SectionCard title="Exports">
+        {artifacts.length === 0 ? (
+          <EmptyState title="No exports yet." subtitle="Generate any format to see downloadable artifacts here." />
+        ) : (
+          <DataTableShell>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Format</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {artifacts.map((a, i) => (
+                  <TableRow key={`${a.format}-${i}`}>
+                    <TableCell className="font-semibold">{a.format.toUpperCase()}</TableCell>
+                    <TableCell>{a.mode}</TableCell>
+                    <TableCell className="text-right">
+                      <a href={a.url} target="_blank" rel="noreferrer">Download</a>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTableShell>
+        )}
+      </SectionCard>
 
       {drawerOpen && drawerData && <LineageDrawer data={drawerData} onClose={() => setDrawerOpen(false)} />}
     </div>

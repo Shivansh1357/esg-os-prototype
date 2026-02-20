@@ -1,6 +1,7 @@
 'use client'
 
 import { ReportMeta } from '@/lib/reportMeta'
+import { cn } from '@/lib/utils'
 
 export default function ReportContextBanner({ meta }: { meta: ReportMeta | null | undefined }) {
   if (!meta) return null
@@ -11,14 +12,12 @@ export default function ReportContextBanner({ meta }: { meta: ReportMeta | null 
   return (
     <div
       data-test="report-context-banner"
-      style={{
-        margin: '0 0 12px',
-        padding: 10,
-        border: `1px solid ${meta.isLocked ? '#274' : '#345'}`,
-        borderRadius: 8,
-        background: meta.isLocked ? '#0f2318' : '#111a2b',
-        fontSize: 13
-      }}
+      className={cn(
+        'mb-3 rounded-lg border px-3 py-2.5 text-sm font-medium',
+        meta.isLocked
+          ? 'border-success/35 bg-success/15 text-success'
+          : 'border-primary/35 bg-primary/10 text-primary'
+      )}
     >
       {text}
     </div>

@@ -2,8 +2,33 @@
 
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 import { getJSON } from '@/lib/api'
 import { getClientRole } from '@/lib/role'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import {
+  DataTableShell,
+  KpiGrid,
+  PageHeader,
+  SectionCard,
+  StatCard,
+} from '@/components/product'
 
 type PilotTenantRow = {
   tenantId: string | null
@@ -61,109 +86,125 @@ export default function PilotPage() {
 
   if (role !== 'ADMIN') {
     return (
-      <div>
-        <h2 style={{ fontSize: 18 }}>Pilot Dashboard</h2>
-        <p>Insufficient permissions.</p>
+      <div className="space-y-4">
+        <PageHeader title="Pilot Dashboard" description="Tenant adoption and activation metrics." />
+        <SectionCard>
+          <p>Insufficient permissions.</p>
+        </SectionCard>
       </div>
     )
   }
 
   return (
-    <div>
-      <h2 style={{ fontSize: 18, marginBottom: 10 }}>Pilot Dashboard</h2>
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(220px,1fr))', gap: 10 }}>
+    <div className="space-y-4">
+      <PageHeader title="Pilot Dashboard" description="Activation, freeze, and experience metrics across pilot tenants." />
+
+      <KpiGrid>
         <Card title="Avg Time to First Report" value={avgTtf} testId="pilot-summary-ttf" />
         <Card title="% Tenants Reaching Freeze" value={`${(summary?.freezeReachPercent ?? 0).toFixed(2)}%`} testId="pilot-summary-freeze" />
         <Card title="% Tenants Inviting Suppliers" value={`${(summary?.supplierInviteReachPercent ?? 0).toFixed(2)}%`} testId="pilot-summary-supplier" />
         <Card title="Avg Feedback Rating" value={summary?.avgFeedbackRating == null ? 'N/A' : summary.avgFeedbackRating.toFixed(2)} testId="pilot-summary-rating" />
-      </section>
+      </KpiGrid>
 
-      <section style={{ marginTop: 14, border: '1px solid #223', borderRadius: 8, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <Th>Tenant</Th>
-              <Th>First Fact</Th>
-              <Th>First Freeze</Th>
-              <Th>First Exec View</Th>
-              <Th>Supplier Invites</Th>
-              <Th>Freeze</Th>
-              <Th>Last Activity</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.tenantId ?? 'tenant'}>
-                <Td>{r.tenantName || r.tenantId || 'N/A'}</Td>
-                <Td>{fmtTs(r.timeToFirstFact)}</Td>
-                <Td>{fmtTs(r.timeToFirstFreeze)}</Td>
-                <Td>{fmtTs(r.timeToFirstExecView)}</Td>
-                <Td>{r.supplierInviteCount}</Td>
-                <Td>{r.freezeCompleted ? 'Done' : 'Pending'}</Td>
-                <Td>{fmtTs(r.lastActivityAt)}</Td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr><Td colSpan={7} style={{ textAlign: 'center' }}>No pilot metrics yet.</Td></tr>
-            )}
-          </tbody>
-        </table>
-      </section>
-
-      <section style={{ marginTop: 14 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>Feedback Stream</h3>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <select value={minRating} onChange={(e) => setMinRating(Number(e.target.value))}>
-              <option value={1}>Rating {'>='} 1</option>
-              <option value={2}>Rating {'>='} 2</option>
-              <option value={3}>Rating {'>='} 3</option>
-              <option value={4}>Rating {'>='} 4</option>
-              <option value={5}>Rating {'>='} 5</option>
-            </select>
-            <input value={pageLike} onChange={(e) => setPageLike(e.target.value)} placeholder="Filter page..." />
-          </div>
+      <SectionCard title="Tenant Progress">
+        <div className="mb-4">
+          <ChartContainer className="h-[280px] w-full" config={pilotChartConfig}>
+            <BarChart
+              data={rows.map((r) => ({
+                tenant: r.tenantName || r.tenantId?.slice(0, 8) || 'N/A',
+                invites: r.supplierInviteCount,
+                feedback: r.feedbackCount,
+              }))}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="tenant" tickLine={false} axisLine={false} tickMargin={8} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+              <Bar dataKey="invites" fill="var(--color-invites)" radius={6} />
+              <Bar dataKey="feedback" fill="var(--color-feedback)" radius={6} />
+            </BarChart>
+          </ChartContainer>
         </div>
-        <div style={{ border: '1px solid #223', borderRadius: 8, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr><Th>Time</Th><Th>Role</Th><Th>Page</Th><Th>Rating</Th><Th>Message</Th></tr>
-            </thead>
-            <tbody>
+        <DataTableShell>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tenant</TableHead>
+                <TableHead>First Fact</TableHead>
+                <TableHead>First Freeze</TableHead>
+                <TableHead>First Exec View</TableHead>
+                <TableHead>Supplier Invites</TableHead>
+                <TableHead>Freeze</TableHead>
+                <TableHead>Last Activity</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.tenantId ?? 'tenant'}>
+                  <TableCell>{r.tenantName || r.tenantId || 'N/A'}</TableCell>
+                  <TableCell>{fmtTs(r.timeToFirstFact)}</TableCell>
+                  <TableCell>{fmtTs(r.timeToFirstFreeze)}</TableCell>
+                  <TableCell>{fmtTs(r.timeToFirstExecView)}</TableCell>
+                  <TableCell>{r.supplierInviteCount}</TableCell>
+                  <TableCell>{r.freezeCompleted ? 'Done' : 'Pending'}</TableCell>
+                  <TableCell>{fmtTs(r.lastActivityAt)}</TableCell>
+                </TableRow>
+              ))}
+              {rows.length === 0 && (
+                <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No pilot metrics yet.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </DataTableShell>
+      </SectionCard>
+
+      <SectionCard
+        title="Feedback Stream"
+        right={(
+          <div className="flex flex-wrap gap-2">
+            <Select value={String(minRating)} onValueChange={(value) => setMinRating(Number(value))}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Rating {'>='} 1</SelectItem>
+                <SelectItem value="2">Rating {'>='} 2</SelectItem>
+                <SelectItem value="3">Rating {'>='} 3</SelectItem>
+                <SelectItem value="4">Rating {'>='} 4</SelectItem>
+                <SelectItem value="5">Rating {'>='} 5</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input value={pageLike} onChange={(e) => setPageLike(e.target.value)} placeholder="Filter page..." />
+          </div>
+        )}
+      >
+        <DataTableShell>
+          <Table>
+            <TableHeader>
+              <TableRow><TableHead>Time</TableHead><TableHead>Role</TableHead><TableHead>Page</TableHead><TableHead>Rating</TableHead><TableHead>Message</TableHead></TableRow>
+            </TableHeader>
+            <TableBody>
               {(feedback.data ?? []).map((f) => (
-                <tr key={f.id}>
-                  <Td>{fmtTs(f.createdAt)}</Td>
-                  <Td>{f.role}</Td>
-                  <Td>{f.page}</Td>
-                  <Td>{f.rating}</Td>
-                  <Td>{f.message}</Td>
-                </tr>
+                <TableRow key={f.id}>
+                  <TableCell>{fmtTs(f.createdAt)}</TableCell>
+                  <TableCell>{f.role}</TableCell>
+                  <TableCell>{f.page}</TableCell>
+                  <TableCell>{f.rating}</TableCell>
+                  <TableCell>{f.message}</TableCell>
+                </TableRow>
               ))}
               {(feedback.data ?? []).length === 0 && (
-                <tr><Td colSpan={5} style={{ textAlign: 'center' }}>No feedback yet.</Td></tr>
+                <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No feedback yet.</TableCell></TableRow>
               )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </TableBody>
+          </Table>
+        </DataTableShell>
+      </SectionCard>
     </div>
   )
 }
 
 function Card({ title, value, testId }: { title: string; value: string; testId: string }) {
-  return (
-    <div style={{ border: '1px solid #223', borderRadius: 8, padding: 10 }}>
-      <div style={{ fontSize: 12, opacity: 0.8 }}>{title}</div>
-      <div style={{ fontSize: 22, fontWeight: 600 }} data-test={testId}>{value}</div>
-    </div>
-  )
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return <th style={{ textAlign: 'left', padding: 8, background: '#11182f', borderBottom: '1px solid #223' }}>{children}</th>
-}
-function Td({ children, colSpan, style }: { children: React.ReactNode; colSpan?: number; style?: React.CSSProperties }) {
-  return <td colSpan={colSpan} style={{ padding: 8, borderBottom: '1px solid #223', ...(style || {}) }}>{children}</td>
+  return <StatCard label={title} value={value} testId={testId} />
 }
 
 function fmtTs(v: string | null) {
@@ -179,3 +220,14 @@ function formatDuration(seconds: number | null) {
   const rem = mins % 60
   return `${hours}h ${rem}m`
 }
+
+const pilotChartConfig = {
+  invites: {
+    label: 'Invites',
+    color: 'hsl(var(--chart-1))',
+  },
+  feedback: {
+    label: 'Feedback',
+    color: 'hsl(var(--chart-2))',
+  },
+} satisfies ChartConfig

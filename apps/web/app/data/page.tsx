@@ -8,6 +8,30 @@ import { quarterRangeFromDate, ReportMeta } from '@/lib/reportMeta'
 import { useReportContext } from '../report-context'
 import ReportContextBanner from '@/components/ReportContextBanner'
 import { getClientRole } from '@/lib/role'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  DataTableShell,
+  FilterBar,
+  PageHeader,
+  SectionCard,
+  StatusBanner,
+} from '@/components/product'
 
 type Fact = {
   id: string
@@ -73,71 +97,87 @@ export default function DataHubPage() {
   const hasOutliers = rows.some(r => r.outlier)
 
   return (
-    <div>
+    <div className="space-y-4">
       <ReportContextBanner meta={activeReport} />
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-        <h2 style={{fontSize:18}}>Data Hub</h2>
-        <UploadBillModal
-          data-test="data-upload-btn"
-          onUploaded={()=> qc.invalidateQueries({ queryKey:['facts'] })}
-          disabled={isFrozenPeriod}
-          title={isFrozenPeriod ? 'Report is frozen. Unlocking requires creating a new report version.' : ''}
-        />
-      </div>
+      <PageHeader
+        title="Data Hub"
+        description="Upload evidence-backed data, validate mappings, and approve report facts."
+        right={(
+          <UploadBillModal
+            data-test="data-upload-btn"
+            onUploaded={()=> qc.invalidateQueries({ queryKey:['facts'] })}
+            disabled={isFrozenPeriod}
+            title={isFrozenPeriod ? 'Report is frozen. Unlocking requires creating a new report version.' : ''}
+          />
+        )}
+      />
 
       {isFrozenPeriod && (
-        <div style={{ margin:'0 0 12px', padding:10, border:'1px solid #274', borderRadius:8, background:'#0f2318' }}>
+        <StatusBanner tone="success">
           Frozen Snapshot - fact approvals and uploads are disabled.
-        </div>
+        </StatusBanner>
       )}
       {onboarding && onboardingStep === '1' && (
-        <div data-test="onboarding-tooltip-step-1" style={{ margin:'0 0 12px', padding:10, border:'1px solid #345', borderRadius:8, background:'#111a2b' }}>
+        <StatusBanner tone="info" testId="onboarding-tooltip-step-1">
           Step 1: Upload bill. Step 2: Approve at least one draft fact. Then go to{' '}
           <Link href="/reports?onboarding=1&step=3">Reports</Link> for freeze.
-        </div>
+        </StatusBanner>
       )}
 
       <Filters value={filters} onChange={setFilters} />
 
       {hasOutliers && (
-        <div style={{margin:'12px 0', padding:10, background:'#221a00', border:'1px solid #332200', borderRadius:8}}>
+        <StatusBanner tone="warning">
           Heads up: potential outliers flagged. Review before approving.
-        </div>
+        </StatusBanner>
       )}
 
-      <div style={{overflowX:'auto', border:'1px solid #223', borderRadius:8}}>
-        <table style={{width:'100%', borderCollapse:'collapse'}}>
-          <thead>
-            <tr><Th>Metric</Th><Th>Entity</Th><Th>Period</Th><Th>Value</Th><Th>Unit</Th><Th>Status</Th><Th>Evidence</Th><Th>Outlier</Th><Th>Actions</Th></tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.id}>
-                <Td>{r.metricCode}</Td>
-                <Td><code>{r.entityId.slice(0,8)}</code></Td>
-                <Td>{r.periodStart} → {r.periodEnd}</Td>
-                <Td>{r.value.toLocaleString()}</Td>
-                <Td>{r.unit}</Td>
-                <Td>{r.status}</Td>
-                <Td style={{maxWidth:220, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{r.sourceRef || '-'}</Td>
-                <Td>{r.outlier ? '⚠️' : ''}</Td>
-                <Td>
-                  {r.status === 'DRAFT' && (
-                    <button
-                      data-test="approve-btn"
-                      onClick={()=>approve.mutate(r.id)}
-                      disabled={approve.isPending || isFrozenPeriod || !canApprove}
-                      title={isFrozenPeriod ? 'Report is frozen. Unlocking requires creating a new report version.' : ''}
-                    >
-                      Approve
-                    </button>
-                  )}
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SectionCard title="Facts">
+        <DataTableShell>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Metric</TableHead>
+                <TableHead>Entity</TableHead>
+                <TableHead>Period</TableHead>
+                <TableHead>Value</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Evidence</TableHead>
+                <TableHead>Outlier</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map(r => (
+                <TableRow key={r.id}>
+                  <TableCell>{r.metricCode}</TableCell>
+                  <TableCell><code>{r.entityId.slice(0,8)}</code></TableCell>
+                  <TableCell>{r.periodStart} → {r.periodEnd}</TableCell>
+                  <TableCell>{r.value.toLocaleString()}</TableCell>
+                  <TableCell>{r.unit}</TableCell>
+                  <TableCell>{r.status}</TableCell>
+                  <TableCell className="max-w-[220px] truncate">{r.sourceRef || '-'}</TableCell>
+                  <TableCell>{r.outlier ? '⚠️' : ''}</TableCell>
+                  <TableCell>
+                    {r.status === 'DRAFT' && (
+                      <Button
+                        size="sm"
+                        data-test="approve-btn"
+                        onClick={()=>approve.mutate(r.id)}
+                        disabled={approve.isPending || isFrozenPeriod || !canApprove}
+                        title={isFrozenPeriod ? 'Report is frozen. Unlocking requires creating a new report version.' : ''}
+                      >
+                        Approve
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DataTableShell>
+      </SectionCard>
     </div>
   )
 }
@@ -146,18 +186,30 @@ function Filters({ value, onChange }:{ value:any; onChange:(v:any)=>void }) {
   const [local, setLocal] = useState(value)
   const apply = () => onChange(local)
   return (
-    <div style={{display:'grid', gridTemplateColumns:'repeat(5, minmax(160px, 1fr)) 120px', gap:8, margin:'12px 0'}}>
-      <input placeholder="Entity ID" value={local.entityId||''} onChange={e=>setLocal({...local, entityId:e.target.value})}/>
-      <input placeholder="Metric code (e.g. ELEC_KWH)" value={local.metricCode||''} onChange={e=>setLocal({...local, metricCode:e.target.value})}/>
-      <select value={local.status||''} onChange={e=>setLocal({...local, status:e.target.value||undefined})}>
-        <option value="">Any status</option><option>DRAFT</option><option>APPROVED</option>
-      </select>
-      <input type="date" value={local.periodStart||''} onChange={e=>setLocal({...local, periodStart:e.target.value})}/>
-      <input type="date" value={local.periodEnd||''} onChange={e=>setLocal({...local, periodEnd:e.target.value})}/>
-      <button onClick={apply}>Apply</button>
-    </div>
+    <FilterBar className="md:grid-cols-[repeat(5,minmax(0,1fr))_120px]">
+      <Input
+        placeholder="Entity ID"
+        value={local.entityId||''}
+        onChange={e=>setLocal({...local, entityId:e.target.value})}
+      />
+      <Input
+        placeholder="Metric code (e.g. ELEC_KWH)"
+        value={local.metricCode||''}
+        onChange={e=>setLocal({...local, metricCode:e.target.value})}
+      />
+      <Select value={local.status||'__all'} onValueChange={v=>setLocal({...local, status:v==='__all'?undefined:v})}>
+        <SelectTrigger>
+          <SelectValue placeholder="Any status" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all">Any status</SelectItem>
+          <SelectItem value="DRAFT">DRAFT</SelectItem>
+          <SelectItem value="APPROVED">APPROVED</SelectItem>
+        </SelectContent>
+      </Select>
+      <Input type="date" value={local.periodStart||''} onChange={e=>setLocal({...local, periodStart:e.target.value})}/>
+      <Input type="date" value={local.periodEnd||''} onChange={e=>setLocal({...local, periodEnd:e.target.value})}/>
+      <Button onClick={apply}>Apply</Button>
+    </FilterBar>
   )
 }
-
-function Th({children}:{children:React.ReactNode}){ return <th style={{textAlign:'left', padding:8, background:'#11182f', borderBottom:'1px solid #223'}}>{children}</th>}
-function Td({children, style}:{children:React.ReactNode; style?: React.CSSProperties}){ return <td style={{padding:8, borderBottom:'1px solid #223', ...(style||{})}}>{children}</td>}

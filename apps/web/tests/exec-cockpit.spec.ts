@@ -17,7 +17,7 @@ test('exec cockpit renders KPIs and stays snapshot-consistent after freeze', asy
 
   await page.goto(`/reports?reportId=${reportId}`)
   await page.getByTestId('freeze-report').click()
-  await expect(page.getByTestId('report-status')).toContainText('Frozen')
+  await expect(page.getByTestId('report-status')).toContainText('Frozen', { timeout: 15000 })
 
   await page.goto(`/exec?reportId=${reportId}`)
   await expect(page.getByTestId('exec-mode-banner')).toContainText('Mode: Snapshot')

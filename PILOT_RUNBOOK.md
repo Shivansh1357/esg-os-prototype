@@ -33,9 +33,9 @@ This creates:
 ## 3) Runtime health checks
 
 ```bash
-curl -i http://localhost:3001/health
-curl -i http://localhost:3001/metrics
-curl -i http://localhost:3000/
+curl -i http://localhost:5051/health
+curl -i http://localhost:5051/metrics
+curl -i http://localhost:5050/
 ```
 
 ## 4) Backup example (Postgres)

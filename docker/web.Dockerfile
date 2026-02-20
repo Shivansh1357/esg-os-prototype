@@ -4,7 +4,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
+ENV PORT=5050
 
 RUN corepack enable
 
@@ -19,6 +19,6 @@ WORKDIR /app/apps/web
 
 RUN pnpm build
 
-EXPOSE 3000
+EXPOSE 5050
 
 CMD ["pnpm", "start"]

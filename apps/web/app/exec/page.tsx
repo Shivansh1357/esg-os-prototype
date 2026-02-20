@@ -2,8 +2,12 @@
 
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Pie, PieChart, Cell } from 'recharts'
 import { getJSON } from '@/lib/api'
 import { useReportContext } from '../report-context'
+import { Badge } from '@/components/ui/badge'
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { KpiGrid, LoadingState, PageHeader, SectionCard, StatCard, StatusBanner } from '@/components/product'
 
 type ExecKpi = {
   name: string
@@ -44,120 +48,140 @@ export default function ExecPage() {
 
   if (!reportId) {
     return (
-      <div>
-        <h2 style={{ fontSize: 18, marginBottom: 6 }}>Executive Cockpit</h2>
-        <small>Select a report from Reports page to view KPI cockpit.</small>
+      <div className="space-y-4">
+        <PageHeader
+          title="Executive Cockpit"
+          description="Select a report from the Reports page to load executive KPI payload."
+        />
       </div>
     )
   }
 
   return (
-    <div>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 12 }}>
-        <div>
-          <h2 style={{ fontSize: 18, marginBottom: 6 }}>Executive Cockpit</h2>
-          <small>Backend-authored KPI payload for decision review.</small>
-        </div>
-      </header>
+    <div className="space-y-4">
+      <PageHeader
+        title="Executive Cockpit"
+        description="Backend-authored KPI payload for decision review and investor narratives."
+      />
 
       {exec.data && (
-        <div
-          data-test="exec-mode-banner"
-          style={{
-            marginTop: 12,
-            padding: 10,
-            border: `1px solid ${exec.data.mode === 'snapshot' ? '#274' : '#345'}`,
-            borderRadius: 8,
-            background: exec.data.mode === 'snapshot' ? '#0f2318' : '#111a2b',
-            fontSize: 13
-          }}
+        <StatusBanner
+          testId="exec-mode-banner"
+          tone={exec.data.mode === 'snapshot' ? 'success' : 'info'}
         >
           Mode: {exec.data.mode === 'snapshot' ? 'Snapshot' : 'Live'} • Period {exec.data.periodStart} → {exec.data.periodEnd}
           {exec.data.isLocked && (
-            <span data-test="exec-calc-version-badge" style={{ marginLeft: 8 }}>
+            <span data-test="exec-calc-version-badge" className="ml-2">
               • Calc v{exec.data.calcVersion}
             </span>
           )}
-        </div>
+        </StatusBanner>
       )}
       {onboarding && onboardingStep === '4' && (
-        <div data-test="onboarding-tooltip-step-4" style={{ marginTop: 10, padding: 10, border: '1px solid #345', borderRadius: 8, background: '#111a2b' }}>
+        <StatusBanner testId="onboarding-tooltip-step-4" tone="info">
           Step 4 complete: Review KPIs in Exec. Next: invite suppliers from the Suppliers page.
-        </div>
+        </StatusBanner>
       )}
 
-      {exec.isPending && <p style={{ marginTop: 12 }}>Loading KPIs…</p>}
+      {exec.isPending && <LoadingState label="Loading KPIs…" />}
       {exec.isError && (
-        <div style={{ marginTop: 12, padding: 10, border: '1px solid #442222', background: '#2a1420', borderRadius: 8 }}>
+        <StatusBanner tone="danger">
           Failed to load executive KPIs.
-        </div>
+        </StatusBanner>
       )}
 
       {exec.data && (
         <>
-          <section
-            data-test="exec-kpi-grid"
-            style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(220px,1fr))', gap: 12 }}
-          >
+          <KpiGrid data-test="exec-kpi-grid">
             {exec.data.kpis.slice(0, 12).map((kpi) => (
               <KpiTile key={kpi.name} kpi={kpi} />
             ))}
-          </section>
+          </KpiGrid>
 
-          <section style={{ marginTop: 12, border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
-            <h3 style={{ marginTop: 0 }}>Scope 3 Breakdown</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(220px,1fr))', gap: 12 }}>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Internal Scope 3</div>
-                <div data-test="scope3-internal-breakdown" style={{ fontSize: 22, fontWeight: 600 }}>
-                  {formatValue(exec.data.scope3Breakdown?.internal ?? null)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Supplier Scope 3</div>
-                <div data-test="scope3-supplier-breakdown" style={{ fontSize: 22, fontWeight: 600 }}>
-                  {formatValue(exec.data.scope3Breakdown?.supplier ?? null)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Coverage Delta</div>
-                <div data-test="supplier-coverage-delta" style={{ fontSize: 22, fontWeight: 600 }}>
-                  {formatDelta(exec.data.kpis.find((k) => k.name === 'Supplier coverage %')?.delta)}
-                </div>
-              </div>
+          <SectionCard title="Scope 3 Breakdown">
+            <div className="grid gap-3 md:grid-cols-3">
+              <StatCard
+                label="Internal Scope 3"
+                value={<span data-test="scope3-internal-breakdown">{formatValue(exec.data.scope3Breakdown?.internal ?? null)}</span>}
+              />
+              <StatCard
+                label="Supplier Scope 3"
+                value={<span data-test="scope3-supplier-breakdown">{formatValue(exec.data.scope3Breakdown?.supplier ?? null)}</span>}
+              />
+              <StatCard
+                label="Coverage Delta"
+                value={<span data-test="supplier-coverage-delta">{formatDelta(exec.data.kpis.find((k) => k.name === 'Supplier coverage %')?.delta)}</span>}
+              />
+            </div>
+            <div className="mt-4">
+              <ChartContainer className="mx-auto h-[260px] max-w-[460px]" config={execChartConfig}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Internal', value: exec.data.scope3Breakdown?.internal ?? 0, fill: 'var(--color-internal)' },
+                      { name: 'Supplier', value: exec.data.scope3Breakdown?.supplier ?? 0, fill: 'var(--color-supplier)' },
+                    ]}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={54}
+                    outerRadius={88}
+                    paddingAngle={2}
+                  >
+                    <Cell fill="var(--color-internal)" />
+                    <Cell fill="var(--color-supplier)" />
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
             </div>
             {exec.data.attribution && (
-              <div data-test="scope3-attribution-note" style={{ marginTop: 8, fontSize: 13, opacity: 0.9 }}>
+              <div data-test="scope3-attribution-note" className="mt-3 text-sm text-muted-foreground">
                 {exec.data.attribution}
               </div>
             )}
-          </section>
+          </SectionCard>
 
-          <section style={{ marginTop: 16, border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
-            <h3 style={{ marginTop: 0 }}>Executive Brief</h3>
-            <ul style={{ margin: '6px 0 0 18px' }}>
+          <SectionCard title="Executive Brief">
+            <ul className="list-disc space-y-1 pl-5 text-sm">
               {bullets.map((bullet, i) => <li key={i}>{bullet}</li>)}
             </ul>
-          </section>
+          </SectionCard>
         </>
       )}
     </div>
   )
 }
 
+const execChartConfig = {
+  internal: {
+    label: 'Internal',
+    color: 'hsl(var(--chart-1))',
+  },
+  supplier: {
+    label: 'Supplier',
+    color: 'hsl(var(--chart-2))',
+  },
+} satisfies ChartConfig
+
 function KpiTile({ kpi }: { kpi: ExecKpi }) {
-  const tone = kpi.status === 'GREEN' ? '#0d2f21' : kpi.status === 'YELLOW' ? '#5e4d16' : '#3a0b0b'
+  const tone =
+    kpi.status === 'GREEN'
+      ? 'bg-success/20 text-success'
+      : kpi.status === 'YELLOW'
+      ? 'bg-warning/20 text-warning-foreground'
+      : 'bg-destructive/20 text-destructive'
   const delta = typeof kpi.delta === 'number' ? `${kpi.delta > 0 ? '+' : ''}${kpi.delta.toFixed(2)}%` : '—'
   return (
-    <div data-test="exec-kpi-tile" style={{ border: `1px solid ${tone}`, borderRadius: 10, padding: 12, background: '#0b1020' }}>
-      <div style={{ fontSize: 12, opacity: 0.8 }}>{kpi.name}</div>
-      <div style={{ fontSize: 24, fontWeight: 600, marginTop: 6 }}>
+    <SectionCard className="p-3" title={<span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{kpi.name}</span>}>
+      <div data-test="exec-kpi-tile" className="space-y-1">
+        <div className="text-2xl font-semibold tracking-tight">
         {kpi.value === null ? '—' : Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(kpi.value)}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Δ {delta} • <Badge className={tone}>{kpi.status}</Badge>
+        </div>
       </div>
-      <div style={{ fontSize: 12, marginTop: 4 }}>
-        Δ {delta} • <span>{kpi.status}</span>
-      </div>
-    </div>
+    </SectionCard>
   )
 }
 

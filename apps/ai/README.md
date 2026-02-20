@@ -16,7 +16,7 @@ uvicorn app.main:app --reload --port 8001
 - POST `/compliance/explain` → { bullets, checklist }
 
 ## Env
-- `CORS_ORIGINS` (e.g., http://localhost:3000)
+- `CORS_ORIGINS` (e.g., http://localhost:5050)
 - Optional LLM: `USE_LLM=true`, `OPENAI_API_KEY` or `BEDROCK_REGION`
 - Optional S3 reads: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_REGION`, `S3_ENDPOINT`
 

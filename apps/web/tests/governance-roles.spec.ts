@@ -20,7 +20,7 @@ test('governance roles enforce route permissions and read-only UI', async ({ pag
   const draftReportId = await createReport(`Gov Draft ${Date.now()}`)
 
   const memberReq = await request.newContext({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5051',
     extraHTTPHeaders: { ...makeAuthHeaders({ tenantId: process.env.NEXT_PUBLIC_TENANT_ID!, userId: process.env.NEXT_PUBLIC_USER_ID!, role: 'MEMBER' }), 'content-type': 'application/json' }
   })
 
@@ -51,7 +51,7 @@ test('governance roles enforce route permissions and read-only UI', async ({ pag
   await expect(page.getByTestId('recalc-button')).toBeDisabled()
 
   const auditorReq = await request.newContext({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5051',
     extraHTTPHeaders: { ...makeAuthHeaders({ tenantId: process.env.NEXT_PUBLIC_TENANT_ID!, userId: process.env.NEXT_PUBLIC_USER_ID!, role: 'AUDITOR' }), 'content-type': 'application/json' }
   })
   const auditorDraftExport = await auditorReq.post(`/reports/${draftReportId}/export?format=pdf`, { data: {} })

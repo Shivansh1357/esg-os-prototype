@@ -1,7 +1,5 @@
 import { getClientRole } from '@/lib/role'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const process: any;
 const API = process.env.NEXT_PUBLIC_API_URL!;
 const headers = () => ({
   'Content-Type': 'application/json',
@@ -11,7 +9,7 @@ const headers = () => ({
   'x-role': getClientRole(),
 });
 
-export async function gql<T>(query: string, variables?: Record<string, any>): Promise<T> {
+export async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   const r = await fetch(`${API}/graphql`, {
     method: 'POST',
     headers: headers(),
@@ -23,7 +21,7 @@ export async function gql<T>(query: string, variables?: Record<string, any>): Pr
   return j.data;
 }
 
-export async function postJSON<T>(path: string, body: any): Promise<T> {
+export async function postJSON<T>(path: string, body: unknown): Promise<T> {
   const r = await fetch(`${API}${path}`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
@@ -40,7 +38,7 @@ export async function getJSON<T>(path: string): Promise<T> {
 }
 
 const AI = process.env.NEXT_PUBLIC_AI_URL || process.env.NEXT_PUBLIC_API_URL!;
-export async function postAI<T>(path: string, body: any): Promise<T> {
+export async function postAI<T>(path: string, body: unknown): Promise<T> {
   const r = await fetch(`${AI}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,5 +47,3 @@ export async function postAI<T>(path: string, body: any): Promise<T> {
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
-
-

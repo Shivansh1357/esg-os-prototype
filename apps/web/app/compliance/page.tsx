@@ -9,6 +9,31 @@ import { ReportMeta } from '@/lib/reportMeta'
 import { useReportContext } from '../report-context'
 import ReportContextBanner from '@/components/ReportContextBanner'
 import { getClientRole } from '@/lib/role'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import {
+  DataTableShell,
+  PageHeader,
+  SectionCard,
+  StatusBanner,
+} from '@/components/product'
 
 type Finding = {
   id: string
@@ -100,96 +125,118 @@ export default function CompliancePage() {
   }, [q.data, statusFilter, search, isFrozenPeriod, snapshotRows])
 
   return (
-    <div>
+    <div className="space-y-4">
       <ReportContextBanner meta={activeReport} />
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 12 }}>
-        <div>
-          <h2 style={{ fontSize: 18, marginBottom: 6 }}>Compliance - Gap Map</h2>
-          <small>Attach evidence to flip failing rules to PASS.</small>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div>
-            <label>Quarter start</label>
-            <input type="date" value={toQuarterStart(date)} onChange={e => setDate(e.target.value)} />
+      <PageHeader
+        title="Compliance - Gap Map"
+        description="Track unresolved rules, attach evidence, and move findings to PASS."
+        right={(
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Quarter start</label>
+              <Input type="date" value={toQuarterStart(date)} onChange={e => setDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Period</label>
+              <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm">
+                {periodStart} → {periodEnd}
+              </div>
+            </div>
           </div>
-          <div>
-            <label>Period</label>
-            <div style={{ padding: 8, border: '1px solid #233', borderRadius: 8 }}>{periodStart} → {periodEnd}</div>
-          </div>
-        </div>
-      </header>
+        )}
+      />
 
       <ProgressBar percent={completeness.pct} text={`${completeness.pass}/${completeness.total} PASS`} />
       {isFrozenPeriod && (
-        <div data-test="frozen-snapshot-label" style={{ margin: '0 0 10px', padding: 10, border: '1px solid #274', borderRadius: 8, background: '#0f2318' }}>
+        <StatusBanner tone="success" testId="frozen-snapshot-label">
           Frozen Snapshot - showing report compliance snapshot.
-        </div>
+        </StatusBanner>
       )}
       {isAuditor && (
-        <div data-test="auditor-readonly-banner" style={{ margin: '0 0 10px', padding: 10, border: '1px solid #463', borderRadius: 8, background: '#1f1a12' }}>
+        <StatusBanner tone="warning" testId="auditor-readonly-banner">
           Auditor View (Read-only)
-        </div>
+        </StatusBanner>
       )}
 
-      <div style={{ display: 'flex', gap: 8, margin: '12px 0' }}>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}>
-          <option value="ALL">All statuses</option>
-          <option value="FAIL">FAIL</option>
-          <option value="RISK">RISK</option>
-          <option value="PASS">PASS</option>
-        </select>
-        <input placeholder="Search rule or reason..." value={search} onChange={e => setSearch(e.target.value)} />
-        <button
-          onClick={() => qc.invalidateQueries({ queryKey: ['gapMap', periodStart, periodEnd] })}
-          disabled={isFrozenPeriod || isAuditor}
-          title={isFrozenPeriod ? 'Report is frozen. Unlocking requires creating a new report version.' : isAuditor ? 'Insufficient permissions.' : ''}
-        >
-          Refresh
-        </button>
-      </div>
+      <SectionCard title="Findings">
+        <div className="mb-3 grid gap-2 md:grid-cols-[220px_1fr_auto]">
+          <Select value={statusFilter} onValueChange={value => setStatusFilter(value as any)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              <SelectItem value="FAIL">FAIL</SelectItem>
+              <SelectItem value="RISK">RISK</SelectItem>
+              <SelectItem value="PASS">PASS</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input placeholder="Search rule or reason..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Button
+            variant="outline"
+            onClick={() => qc.invalidateQueries({ queryKey: ['gapMap', periodStart, periodEnd] })}
+            disabled={isFrozenPeriod || isAuditor}
+            title={isFrozenPeriod ? 'Report is frozen. Unlocking requires creating a new report version.' : isAuditor ? 'Insufficient permissions.' : ''}
+          >
+            Refresh
+          </Button>
+        </div>
 
-      <div style={{ overflowX: 'auto', border: '1px solid #223', borderRadius: 8 }}>
-        <table data-test="gap-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <Th>Status</Th><Th>Rule</Th><Th>Severity</Th><Th>Reason</Th><Th>Evidence</Th><Th>Owner</Th><Th>Due</Th><Th>Actions</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(row => (
-              <tr key={row.id}>
-                <Td><StatusBadge status={row.status} /></Td>
-                <Td><code>{row.ruleCode}</code></Td>
-                <Td>{row.severity}</Td>
-                <Td style={{ maxWidth: 420 }}>{row.reason}</Td>
-                <Td style={{ maxWidth: 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {row.evidenceUrl ? <a href={row.evidenceUrl} target="_blank" rel="noreferrer">{row.evidenceUrl}</a> : '—'}
-                </Td>
-                <Td>{row.owner ?? '—'}</Td>
-                <Td>{row.dueDate ?? '—'}</Td>
-                <Td>
-                  {row.status !== 'PASS' && (
-                    <>
-                      <button
-                        data-test="resolve-gap-btn"
-                        onClick={() => setModalFor(row)}
-                        disabled={isFrozenPeriod || !canResolve}
-                        title={isFrozenPeriod ? 'Report is frozen. Unlocking requires creating a new report version.' : !canResolve ? 'Insufficient permissions.' : ''}
-                      >
-                        Attach evidence
-                      </button>
-                      <button onClick={() => setExplainFor(row)} style={{ marginLeft: 6 }}>Explain</button>
-                    </>
-                  )}
-                </Td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr><Td colSpan={8} style={{ textAlign: 'center', padding: 16, opacity: 0.7 }}>No findings for {periodStart} → {periodEnd}.</Td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+        <DataTableShell>
+          <Table data-test="gap-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Status</TableHead>
+                <TableHead>Rule</TableHead>
+                <TableHead>Severity</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>Evidence</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Due</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map(row => (
+                <TableRow key={row.id}>
+                  <TableCell><StatusBadge status={row.status} /></TableCell>
+                  <TableCell><code>{row.ruleCode}</code></TableCell>
+                  <TableCell>{row.severity}</TableCell>
+                  <TableCell className="max-w-[420px]">{row.reason}</TableCell>
+                  <TableCell className="max-w-[280px] truncate">
+                    {row.evidenceUrl ? <a href={row.evidenceUrl} target="_blank" rel="noreferrer">{row.evidenceUrl}</a> : '—'}
+                  </TableCell>
+                  <TableCell>{row.owner ?? '—'}</TableCell>
+                  <TableCell>{row.dueDate ?? '—'}</TableCell>
+                  <TableCell>
+                    {row.status !== 'PASS' && (
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          size="sm"
+                          data-test="resolve-gap-btn"
+                          onClick={() => setModalFor(row)}
+                          disabled={isFrozenPeriod || !canResolve}
+                          title={isFrozenPeriod ? 'Report is frozen. Unlocking requires creating a new report version.' : !canResolve ? 'Insufficient permissions.' : ''}
+                        >
+                          Attach evidence
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setExplainFor(row)}>Explain</Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-6 text-center text-muted-foreground">
+                    No findings for {periodStart} → {periodEnd}.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </DataTableShell>
+      </SectionCard>
 
       {modalFor && (
         <EvidenceAttachModal
@@ -208,29 +255,20 @@ export default function CompliancePage() {
 function ProgressBar({ percent, text }: { percent: number; text?: string }) {
   const p = Math.max(0, Math.min(100, percent || 0))
   return (
-    <div style={{ margin: '12px 0 16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+    <div className="rounded-lg border border-border/70 bg-card/70 p-3">
+      <div className="mb-2 flex justify-between text-xs">
         <span>Completeness</span><span>{text ?? `${p}%`}</span>
       </div>
-      <div data-test="completeness-bar" style={{ height: 10, background: '#11182f', borderRadius: 20, overflow: 'hidden', border: '1px solid #223' }}>
-        <div style={{ width: `${p}%`, height: '100%', background: '#27c084' }} />
-      </div>
+      <Progress data-test="completeness-bar" value={p} className="h-2.5" />
     </div>
   )
 }
 
 function StatusBadge({ status }: { status: Finding['status'] }) {
-  const map: Record<string, { bg: string; fg: string }> = {
-    FAIL: { bg: '#3a0b0b', fg: '#ff7d7d' },
-    RISK: { bg: '#332a00', fg: '#ffd36e' },
-    PASS: { bg: '#0d2f21', fg: '#7be3b6' }
-  }
-  const s = map[status]
-  return <span style={{ padding: '2px 8px', borderRadius: 999, background: s.bg, color: s.fg, fontSize: 12 }}>{status}</span>
+  if (status === 'PASS') return <Badge className="bg-success/20 text-success hover:bg-success/20">PASS</Badge>
+  if (status === 'RISK') return <Badge className="bg-warning/20 text-warning-foreground hover:bg-warning/20">RISK</Badge>
+  return <Badge className="bg-destructive/20 text-destructive hover:bg-destructive/20">FAIL</Badge>
 }
-
-function Th({ children }: { children: React.ReactNode }) { return <th style={{ textAlign: 'left', padding: 8, background: '#11182f', borderBottom: '1px solid #223' }}>{children}</th> }
-function Td({ children, colSpan, style }: { children: React.ReactNode; colSpan?: number; style?: React.CSSProperties }) { return <td colSpan={colSpan} style={{ padding: 8, borderBottom: '1px solid #223', verticalAlign: 'top', ...(style || {}) }}>{children}</td> }
 
 function iso(d: Date) { return d.toISOString().slice(0, 10) }
 function todayISO() { return iso(new Date()) }

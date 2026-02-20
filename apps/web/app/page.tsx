@@ -4,6 +4,10 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { getJSON, postJSON } from '@/lib/api'
 import { useReportContext } from './report-context'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { PageHeader, SectionCard, StatusBanner } from '@/components/product'
+import { CheckCircle2, Circle } from 'lucide-react'
 
 type ChecklistItem = { key: string; label: string; done: boolean }
 type ChecklistResponse = { percent: number; items: ChecklistItem[] }
@@ -30,40 +34,55 @@ export default function Home() {
   const items = checklist.data?.items ?? []
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>ESG OS</h1>
-      <p>Use the navigation: /onboarding, /admin/users, /admin/entities, /data</p>
+    <main className="space-y-4">
+      <PageHeader
+        title="ESG OS Workspace"
+        description="Run the full flow from onboarding to frozen reports with audit-ready controls."
+      />
 
-      <section style={{ marginTop: 16, border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 style={{ margin: 0 }}>Start Your First Report</h3>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Target: complete first freeze in under 30 minutes.</div>
-          </div>
-          <button data-test="start-first-report" onClick={() => start.mutate()} disabled={start.isPending}>
+      <SectionCard
+        title="Start Your First Report"
+        right={
+          <Button
+            data-test="start-first-report"
+            onClick={() => start.mutate()}
+            disabled={start.isPending}
+          >
             {start.isPending ? 'Preparing...' : 'Start Your First Report'}
-          </button>
-        </div>
-      </section>
+          </Button>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Target outcome: complete your first report freeze in under 30 minutes.
+        </p>
+      </SectionCard>
 
-      <section style={{ marginTop: 16, border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>Onboarding Checklist</h3>
-          <div data-test="onboarding-progress">{percent.toFixed(0)}%</div>
-        </div>
-        <div style={{ height: 8, borderRadius: 999, background: '#162038', overflow: 'hidden', marginBottom: 10 }}>
-          <div style={{ width: `${Math.min(100, Math.max(0, percent))}%`, height: '100%', background: '#29c17e' }} />
-        </div>
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {items.map((item) => (
-            <li key={item.key} style={{ padding: '6px 0', opacity: item.done ? 1 : 0.8 }}>
-              {item.done ? '☑' : '☐'} {item.label}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <SectionCard
+        title="Onboarding Checklist"
+        right={<span data-test="onboarding-progress" className="text-sm font-semibold">{percent.toFixed(0)}%</span>}
+      >
+        <Progress value={Math.min(100, Math.max(0, percent))} className="mb-3 h-2.5" />
+        {items.length === 0 ? (
+          <StatusBanner tone="info">Checklist will appear once onboarding data is available.</StatusBanner>
+        ) : (
+          <ul className="space-y-2">
+            {items.map((item) => (
+              <li
+                key={item.key}
+                className="flex items-center gap-2 text-sm"
+              >
+                {item.done ? (
+                  <CheckCircle2 className="size-4 text-success" />
+                ) : (
+                  <Circle className="size-4 text-muted-foreground" />
+                )}
+                <span className={item.done ? '' : 'text-muted-foreground'}>{item.label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
     </main>
   )
 }
-
 

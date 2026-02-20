@@ -10,7 +10,7 @@ pnpm dev
 
 ## Env
 - `DATABASE_URL`
-- `PUBLIC_ORIGIN` (default http://localhost:3001)
+- `PUBLIC_ORIGIN` (default http://localhost:5051)
 - S3 exports/uploads:
   - `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`
 - Tokens:

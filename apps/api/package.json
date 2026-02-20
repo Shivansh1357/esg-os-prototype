@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "cross-env NODE_ENV=development PORT=3001 ts-node-dev --respawn --transpile-only src/main.ts",
-    "start": "cross-env PORT=3001 ts-node --transpile-only src/main.ts",
+    "dev": "cross-env NODE_ENV=development PORT=5051 ts-node-dev --respawn --transpile-only src/main.ts",
+    "start": "cross-env PORT=5051 ts-node --transpile-only src/main.ts",
     "test": "cross-env JWT_SECRET=test-jwt-secret jest"
   },
   "dependencies": {

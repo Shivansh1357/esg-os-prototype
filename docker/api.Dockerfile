@@ -3,7 +3,7 @@ FROM node:20-bookworm-slim
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=5051
 
 RUN corepack enable
 
@@ -14,6 +14,6 @@ RUN pnpm install --frozen-lockfile --filter @apps/api...
 
 COPY apps/api apps/api
 
-EXPOSE 3001
+EXPOSE 5051
 
 CMD ["pnpm", "--filter", "@apps/api", "start"]

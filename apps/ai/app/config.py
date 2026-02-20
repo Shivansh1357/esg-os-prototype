@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     AWS_REGION: str = "ap-south-1"
     # Legacy list form
     ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
+        "http://localhost:5050",
+        "http://127.0.0.1:5050",
     ]
     # New string form (comma-separated)
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:5050"
 
     # Optional S3 read config for JSON {s3Key}
     S3_REGION: Optional[str] = None

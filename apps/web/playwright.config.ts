@@ -10,7 +10,7 @@ process.env.E2E_TENANT_ID = tenantId;
 process.env.E2E_USER_ID = userId;
 process.env.NEXT_PUBLIC_TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID ?? tenantId;
 process.env.NEXT_PUBLIC_USER_ID = process.env.NEXT_PUBLIC_USER_ID ?? userId;
-process.env.NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+process.env.NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5051';
 
 export default defineConfig({
   testDir: './tests',
@@ -18,18 +18,18 @@ export default defineConfig({
   timeout: 120_000,
   workers: 1,
   fullyParallel: false,
-  use: { baseURL: 'http://localhost:3000', trace: 'on-first-retry', testIdAttribute: 'data-test' },
+  use: { baseURL: 'http://localhost:5050', trace: 'on-first-retry', testIdAttribute: 'data-test' },
   webServer: [
     {
       command: 'pnpm --filter @apps/api exec puppeteer browsers install chrome && pnpm --filter @apps/api start',
-      port: 3001,
+      port: 5051,
       timeout: 300_000,
       reuseExistingServer: false,
       env: {
         DATABASE_URL: process.env.DATABASE_URL ?? 'postgres://postgres:esg@localhost:5432/esg-os',
-        PORT: '3001',
+        PORT: '5051',
         SUPPLIER_TOKEN_SECRET: process.env.SUPPLIER_TOKEN_SECRET ?? 'supplier-e2e-secret',
-        PUBLIC_ORIGIN: process.env.PUBLIC_ORIGIN ?? 'http://localhost:3000',
+        PUBLIC_ORIGIN: process.env.PUBLIC_ORIGIN ?? 'http://localhost:5050',
         AUTH_MODE: process.env.AUTH_MODE ?? 'jwt',
         JWT_SECRET: jwtSecret,
         E2E_TENANT_ID: tenantId,
@@ -38,11 +38,11 @@ export default defineConfig({
     },
     {
       command: 'pnpm --filter @apps/web build && pnpm --filter @apps/web start',
-      port: 3000,
+      port: 5050,
       timeout: 180_000,
       reuseExistingServer: false,
       env: {
-        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001',
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5051',
         NEXT_PUBLIC_TENANT_ID: process.env.NEXT_PUBLIC_TENANT_ID ?? tenantId,
         NEXT_PUBLIC_USER_ID: process.env.NEXT_PUBLIC_USER_ID ?? userId,
         NEXT_PUBLIC_AUTH_TOKEN: process.env.NEXT_PUBLIC_AUTH_TOKEN ?? authToken,

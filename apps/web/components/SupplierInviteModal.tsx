@@ -1,6 +1,26 @@
 'use client'
+
 import { useMemo, useRef, useState } from 'react'
 import Papa from 'papaparse'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { DataTableShell } from '@/components/product'
 
 type Row = { name: string; email: string; category: string; spend: number }
 
@@ -16,79 +36,95 @@ export default function SupplierInviteModal({
   const csvTemplate = useMemo(()=> 'name,email,category,spend\nAlpha Co,alpha@example.com,Purchased goods,100000\n', [])
 
   return (
-    <div style={backdrop()}>
-      <div style={card()}>
-        <h3 style={{ marginTop: 0 }}>Invite suppliers</h3>
-        <p style={{ marginTop:-8, opacity:0.8 }}>Import a CSV or add rows, then send invites for <b>{periodStart}</b> → <b>{periodEnd}</b>.</p>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="max-h-[86vh] max-w-5xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Invite suppliers</DialogTitle>
+          <DialogDescription>
+            Import CSV or add rows, then send invites for <b>{periodStart}</b> → <b>{periodEnd}</b>.
+          </DialogDescription>
+        </DialogHeader>
 
-        {!result && (
+        {!result ? (
           <>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div>
-                <label>Import CSV</label>
-                <input type="file" accept=".csv" ref={fileRef} onChange={handleCSV} />
-                <small style={{ display:'block', opacity:0.7, marginTop:6 }}>
-                  CSV headers: <code>name,email,category,spend</code>. <button type="button" onClick={()=>downloadCSV(csvTemplate)}>Download template</button>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Import CSV</Label>
+                <Input type="file" accept=".csv" ref={fileRef} onChange={handleCSV} />
+                <small className="block text-xs text-muted-foreground">
+                  CSV headers: <code>name,email,category,spend</code>.{' '}
+                  <button type="button" className="underline" onClick={()=>downloadCSV(csvTemplate)}>Download template</button>
                 </small>
               </div>
-              <div>
-                <label>Add row</label>
+              <div className="space-y-2">
+                <Label>Add row</Label>
                 <InlineAdd onAdd={(r)=> setRows(prev=>[...prev, r])} />
               </div>
             </div>
 
-            <div style={{ marginTop:12, border:'1px solid #223', borderRadius:8, overflow:'hidden' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                <thead><tr><Th>Name</Th><Th>Email</Th><Th>Category</Th><Th>Spend</Th><Th>&nbsp;</Th></tr></thead>
-                <tbody>
+            <DataTableShell className="mt-3">
+              <Table>
+                <TableHeader>
+                  <TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Category</TableHead><TableHead>Spend</TableHead><TableHead>&nbsp;</TableHead></TableRow>
+                </TableHeader>
+                <TableBody>
                   {rows.map((r,i)=>(
-                    <tr key={i}>
-                      <Td>{r.name}</Td><Td>{r.email}</Td><Td>{r.category}</Td><Td>{fmt(r.spend)}</Td>
-                      <Td><button onClick={()=> setRows(rs=> rs.filter((_,idx)=>idx!==i))}>Remove</button></Td>
-                    </tr>
+                    <TableRow key={i}>
+                      <TableCell>{r.name}</TableCell>
+                      <TableCell>{r.email}</TableCell>
+                      <TableCell>{r.category}</TableCell>
+                      <TableCell>{fmt(r.spend)}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={()=> setRows(rs=> rs.filter((_,idx)=>idx!==i))}>
+                          Remove
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                  {rows.length===0 && <tr><Td colSpan={5} style={{ textAlign:'center', padding:12, opacity:0.7 }}>No rows yet.</Td></tr>}
-                </tbody>
-              </table>
-            </div>
+                  {rows.length===0 && (
+                    <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No rows yet.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </DataTableShell>
 
-            <div style={{ marginTop:12, display:'flex', gap:8 }}>
-              <button onClick={onClose} disabled={busy}>Close</button>
-              <button data-test="invite-suppliers" onClick={sendInvites} disabled={busy || rows.length===0}>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button variant="ghost" onClick={onClose} disabled={busy}>Close</Button>
+              <Button data-test="invite-suppliers" onClick={sendInvites} disabled={busy || rows.length===0}>
                 {busy ? 'Inviting…' : `Invite ${rows.length} supplier(s)`}
-              </button>
-              {err && <span style={{ color:'#ff8d8d' }}>{err}</span>}
+              </Button>
+              {err ? <span className="text-sm text-destructive">{err}</span> : null}
             </div>
           </>
-        )}
-
-        {result && (
+        ) : (
           <>
-            <p><b>{result.count}</b> invite(s) created:</p>
-            <div style={{ border:'1px solid #223', borderRadius:8, overflow:'hidden' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                <thead><tr><Th>Email</Th><Th>Link</Th><Th>Expires</Th></tr></thead>
-                <tbody>
+            <p className="text-sm"><b>{result.count}</b> invite(s) created:</p>
+            <DataTableShell>
+              <Table>
+                <TableHeader>
+                  <TableRow><TableHead>Email</TableHead><TableHead>Link</TableHead><TableHead>Expires</TableHead></TableRow>
+                </TableHeader>
+                <TableBody>
                   {result.invites.map((i)=>(
-                    <tr key={i.supplierId}>
-                      <Td>{i.email}</Td>
-                      <Td style={{ maxWidth:420, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    <TableRow key={i.supplierId}>
+                      <TableCell>{i.email}</TableCell>
+                      <TableCell className="max-w-[420px] truncate">
                         <a href={i.url} target="_blank" rel="noreferrer">{i.url}</a>
-                      </Td>
-                      <Td>{new Date(i.expiresAt).toLocaleString()}</Td>
-                    </tr>
+                      </TableCell>
+                      <TableCell>{new Date(i.expiresAt).toLocaleString()}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ marginTop:12 }}>
-              <button onClick={()=> setResult(null)}>Back</button>
-              <button onClick={onClose} style={{ marginLeft:8 }}>Done</button>
+                </TableBody>
+              </Table>
+            </DataTableShell>
+            <div className="mt-3 flex gap-2">
+              <Button variant="outline" onClick={()=> setResult(null)}>Back</Button>
+              <Button onClick={onClose}>Done</Button>
             </div>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 
   async function handleCSV(e: React.ChangeEvent<HTMLInputElement>) {
@@ -133,12 +169,12 @@ function InlineAdd({ onAdd }:{ onAdd:(r:any)=>void }) {
   const [name, setName] = useState(''); const [email, setEmail] = useState('');
   const [category, setCategory] = useState('Purchased goods'); const [spend, setSpend] = useState<number>(0)
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr auto', gap:8 }}>
-      <input placeholder="Name" value={name} onChange={e=>setName(e.target.value)} />
-      <input placeholder="email@example.com" value={email} onChange={e=>setEmail(e.target.value)} />
-      <input placeholder="Category" value={category} onChange={e=>setCategory(e.target.value)} />
-      <input placeholder="100000" value={spend} onChange={e=>setSpend(Number(e.target.value||0))} />
-      <button onClick={()=>{ if(!email) return; onAdd({ name, email, category, spend }); setName(''); setEmail(''); setSpend(0) }}>Add</button>
+    <div className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+      <Input placeholder="Name" value={name} onChange={e=>setName(e.target.value)} />
+      <Input placeholder="email@example.com" value={email} onChange={e=>setEmail(e.target.value)} />
+      <Input placeholder="Category" value={category} onChange={e=>setCategory(e.target.value)} />
+      <Input placeholder="100000" value={spend} onChange={e=>setSpend(Number(e.target.value||0))} />
+      <Button onClick={()=>{ if(!email) return; onAdd({ name, email, category, spend }); setName(''); setEmail(''); setSpend(0) }}>Add</Button>
     </div>
   )
 }
@@ -149,11 +185,5 @@ async function parseCSV(file: File): Promise<any[]> {
   })
 }
 
-function backdrop(){ return { position:'fixed' as const, inset:0, background:'rgba(0,0,0,0.5)', display:'grid', placeItems:'center', zIndex:50 } }
-function card(){ return { background:'#0b1020', border:'1px solid #223', padding:16, borderRadius:10, width:900, maxWidth:'95vw' } }
-function Th({children}:{children:React.ReactNode}){ return <th style={{ textAlign:'left', padding:8, background:'#11182f', borderBottom:'1px solid #223' }}>{children}</th>}
-function Td({children, colSpan, style}:{children:React.ReactNode; colSpan?:number; style?: React.CSSProperties}){ return <td colSpan={colSpan} style={{ padding:8, borderBottom:'1px solid #223', ...(style||{}) }}>{children}</td> }
 function fmt(n:number){ try{ return Intl.NumberFormat(undefined,{ maximumFractionDigits:0}).format(n) }catch{ return String(n)} }
 function downloadCSV(text:string){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'text/csv'})); a.download='suppliers_template.csv'; a.click(); URL.revokeObjectURL(a.href) }
-
-

@@ -47,13 +47,13 @@ API (dev):
 ```bash
 pnpm dev:api
 ```
-Default port: `3001`
+Default port: `5051`
 
 Web (dev):
 ```bash
 pnpm dev:web
 ```
-Default port: `3000`
+Default port: `5050`
 
 Run both API+Web in one terminal:
 ```bash
@@ -61,8 +61,8 @@ pnpm dev
 ```
 
 Port mapping in dev stack:
-- API: `3001`
-- Web: `3000`
+- API: `5051`
+- Web: `5050`
 
 Web production-mode run:
 ```bash
@@ -136,16 +136,16 @@ docker compose -f docker/compose.smoke.yml up --build -d
 
 Smoke-check endpoints:
 ```bash
-curl -i http://localhost:3001/health
-curl -i http://localhost:3001/metrics
-curl -i http://localhost:3000/
+curl -i http://localhost:5051/health
+curl -i http://localhost:5051/metrics
+curl -i http://localhost:5050/
 ```
 
 Auth smoke check (`401` without token, `200` with JWT):
 ```bash
-curl -i http://localhost:3001/reports
+curl -i http://localhost:5051/reports
 token=$(node -e "const crypto=require('crypto');const enc=o=>Buffer.from(JSON.stringify(o)).toString('base64url');const h=enc({alg:'HS256',typ:'JWT'});const p=enc({tenantId:'11111111-1111-1111-1111-111111111111',sub:'22222222-2222-2222-2222-222222222222',role:'ADMIN',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600});const d=h+'.'+p;const s=crypto.createHmac('sha256',process.env.JWT_SECRET||'test-jwt-secret').update(d).digest('base64url');process.stdout.write(d+'.'+s);")
-curl -i -H "Authorization: Bearer $token" http://localhost:3001/reports
+curl -i -H "Authorization: Bearer $token" http://localhost:5051/reports
 ```
 
 Stop and clean smoke stack:
@@ -172,9 +172,9 @@ pnpm infra:down
 
 If a port is stuck in use on Windows:
 ```bash
-cmd.exe /c "netstat -ano | findstr :3000"
+cmd.exe /c "netstat -ano | findstr :5050"
 cmd.exe /c "taskkill /PID <PID> /F"
-cmd.exe /c "netstat -ano | findstr :3001"
+cmd.exe /c "netstat -ano | findstr :5051"
 cmd.exe /c "taskkill /PID <PID> /F"
 ```
 

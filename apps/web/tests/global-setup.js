@@ -8,7 +8,7 @@ async function globalSetup() {
 
   process.env.NEXT_PUBLIC_TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || tenantId;
   process.env.NEXT_PUBLIC_USER_ID = process.env.NEXT_PUBLIC_USER_ID || userId;
-  process.env.NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  process.env.NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5051';
 
   const pool = new Pool({ connectionString: databaseUrl });
   const client = await pool.connect();

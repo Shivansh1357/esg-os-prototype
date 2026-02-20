@@ -21,8 +21,19 @@ export class WithTenantMiddleware implements NestMiddleware, OnModuleDestroy {
     const allowHeaderFallback = authMode === 'header' || authMode === 'hybrid';
 
     const tenantId = (req.user?.tenantId ?? (allowHeaderFallback ? req.headers['x-tenant-id'] : undefined)) as string;
-    const userId   = (req.user?.sub       ?? (allowHeaderFallback ? req.headers['x-user-id'] : undefined)) as string;
+    const userId = (req.user?.sub ?? (allowHeaderFallback ? req.headers['x-user-id'] : undefined)) as string;
     const rawRole = String(req.user?.role ?? (allowHeaderFallback ? req.headers['x-role'] : undefined) ?? 'ADMIN').toUpperCase();
+
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (tenantId && !uuidRegex.test(tenantId)) {
+      res.status(400).json({ error: 'Invalid tenantId format (must be UUID)' });
+      return;
+    }
+    if (userId && !uuidRegex.test(userId)) {
+      res.status(400).json({ error: 'Invalid userId format (must be UUID)' });
+      return;
+    }
+
     const allowedRoles: TenantContext['role'][] = ['ADMIN', 'MEMBER', 'AUDITOR', 'SUPPLIER'];
     const role = (allowedRoles.includes(rawRole as TenantContext['role']) ? rawRole : null) as TenantContext['role'] | null;
 

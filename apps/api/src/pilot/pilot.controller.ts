@@ -43,8 +43,8 @@ export class PilotController {
     if ((existing.rowCount ?? 0) > 0) {
       return {
         reportId: existing.rows[0].id,
-        periodStart: periodStart.toISOString().slice(0, 10),
-        periodEnd: periodEnd.toISOString().slice(0, 10),
+        periodStart: new Date(periodStart).toISOString().slice(0, 10),
+        periodEnd: new Date(periodEnd).toISOString().slice(0, 10),
         created: false
       };
     }
@@ -68,8 +68,8 @@ export class PilotController {
     );
     return {
       reportId,
-      periodStart: periodStart.toISOString().slice(0, 10),
-      periodEnd: periodEnd.toISOString().slice(0, 10),
+      periodStart: new Date(periodStart).toISOString().slice(0, 10),
+      periodEnd: new Date(periodEnd).toISOString().slice(0, 10),
       created: true
     };
   }

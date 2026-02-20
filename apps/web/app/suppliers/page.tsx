@@ -2,12 +2,33 @@
 
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 import { getJSON, postJSON } from '@/lib/api'
 import SupplierInviteModal from '@/components/SupplierInviteModal'
 import ReportContextBanner from '@/components/ReportContextBanner'
 import { useReportContext } from '../report-context'
 import { ReportMeta } from '@/lib/reportMeta'
 import { getClientRole } from '@/lib/role'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import {
+  DataTableShell,
+  KpiGrid,
+  PageHeader,
+  SectionCard,
+  StatCard,
+  StatusBanner,
+} from '@/components/product'
 
 type ByCat = { category: string; suppliers: number; spend: number; emissions_kgco2e: number }
 type Coverage = {
@@ -87,107 +108,135 @@ export default function SuppliersPage() {
   })
 
   const cov = q.data
+  const chartData = (cov?.byCategory ?? []).map((c) => ({
+    category: c.category,
+    spend: c.spend,
+    emissions: c.emissions_kgco2e,
+  }))
 
   return (
-    <div>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 12 }}>
-        <div>
-          <h2 style={{ fontSize: 18, marginBottom: 6 }}>Suppliers (Scope 3)</h2>
-          <small>Invite suppliers, collect submissions, approve, and fold into Scope 3.</small>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div>
-            <label>Quarter start</label>
-            <input type="date" value={toQuarterStart(date)} onChange={(e) => setDate(e.target.value)} />
+    <div className="space-y-4">
+      <PageHeader
+        title="Suppliers (Scope 3)"
+        description="Invite suppliers, collect emissions submissions, and approve records into Scope 3."
+        right={(
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-2">
+              <Label>Quarter start</Label>
+              <Input type="date" value={toQuarterStart(date)} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Period</Label>
+              <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm">
+                {activePs} → {activePe}
+              </div>
+            </div>
+            <Button
+              onClick={() => setOpen(true)}
+              disabled={isLocked || isAuditor}
+              title={isLocked ? 'Report is frozen. Unlocking requires creating a new report version.' : isAuditor ? 'Insufficient permissions.' : ''}
+            >
+              Invite suppliers
+            </Button>
           </div>
-          <div>
-            <label>Period</label>
-            <div style={{ padding: 8, border: '1px solid #233', borderRadius: 8 }}>{activePs} → {activePe}</div>
-          </div>
-          <button onClick={() => setOpen(true)} disabled={isLocked || isAuditor} title={isLocked ? 'Report is frozen. Unlocking requires creating a new report version.' : isAuditor ? 'Insufficient permissions.' : ''}>
-            Invite suppliers
-          </button>
-        </div>
-      </header>
+        )}
+      />
 
       <ReportContextBanner meta={activeMeta} />
       {isAuditor && (
-        <div data-test="auditor-readonly-banner" style={{ margin: '0 0 12px', padding: 10, border: '1px solid #463', borderRadius: 8, background: '#1f1a12' }}>
+        <StatusBanner tone="warning" testId="auditor-readonly-banner">
           Auditor View (Read-only)
-        </div>
+        </StatusBanner>
       )}
 
-      <section style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(220px,1fr))', gap: 12 }}>
+      <KpiGrid>
         <Card testId="supplier-invited-count" label="Invited" value={cov?.invited ?? 0} />
         <Card testId="supplier-responded-count" label="Responded" value={cov?.responded ?? 0} />
         <Card testId="supplier-coverage-count" label="Coverage by count" value={`${(cov?.coverageByCountPercent ?? 0).toFixed(2)}%`} />
         <Card testId="supplier-coverage-spend" label="Coverage by spend" value={`${(cov?.coveragePercent ?? 0).toFixed(2)}%`} />
-      </section>
+      </KpiGrid>
 
-      <section style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Responses</h3>
-        <div style={{ overflowX: 'auto', border: '1px solid #223', borderRadius: 8 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <Th>Supplier</Th>
-                <Th>Category</Th>
-                <Th>Emissions (kgCO₂e)</Th>
-                <Th>Quality Tier</Th>
-                <Th>Submitted</Th>
-                <Th>Status</Th>
-                <Th>Action</Th>
-              </tr>
-            </thead>
-            <tbody>
+      <SectionCard title="Responses">
+        <DataTableShell>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Supplier</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Emissions (kgCO₂e)</TableHead>
+                <TableHead>Quality Tier</TableHead>
+                <TableHead>Submitted</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {(responses.data ?? []).map((r) => (
-                <tr key={r.id}>
-                  <Td>{r.supplierName}</Td>
-                  <Td>{r.category}</Td>
-                  <Td>{r.emissionsKgCO2e == null ? '—' : fmt(r.emissionsKgCO2e)}</Td>
-                  <Td>{r.dataQualityTier}</Td>
-                  <Td>{new Date(r.submittedAt).toLocaleString()}</Td>
-                  <Td>{r.approved ? 'Approved' : 'Pending'}</Td>
-                  <Td>
-                    <button
+                <TableRow key={r.id}>
+                  <TableCell>{r.supplierName}</TableCell>
+                  <TableCell>{r.category}</TableCell>
+                  <TableCell>{r.emissionsKgCO2e == null ? '—' : fmt(r.emissionsKgCO2e)}</TableCell>
+                  <TableCell>{r.dataQualityTier}</TableCell>
+                  <TableCell>{new Date(r.submittedAt).toLocaleString()}</TableCell>
+                  <TableCell>{r.approved ? 'Approved' : 'Pending'}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
                       data-test={`approve-supplier-${r.id}`}
                       onClick={() => approve.mutate(r.id)}
                       disabled={r.approved || isLocked || approve.isPending || !canApproveSupplier}
                       title={isLocked ? 'Report is frozen. Unlocking requires creating a new report version.' : !canApproveSupplier ? 'Insufficient permissions.' : ''}
                     >
                       {r.approved ? 'Approved' : 'Approve'}
-                    </button>
-                  </Td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
               {(!responses.data || responses.data.length === 0) && (
-                <tr>
-                  <Td colSpan={7} style={{ textAlign: 'center', padding: 12, opacity: 0.7 }}>No responses yet.</Td>
-                </tr>
+                <TableRow>
+                  <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No responses yet.</TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </TableBody>
+          </Table>
+        </DataTableShell>
+      </SectionCard>
 
-      <section style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0 }}>By Category</h3>
-        <div style={{ overflowX: 'auto', border: '1px solid #223', borderRadius: 8 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><Th>Category</Th><Th>Responded suppliers</Th><Th>Spend</Th><Th>Reported Emissions</Th></tr></thead>
-            <tbody>
-              {(cov?.byCategory ?? []).map((r) => (
-                <tr key={r.category}>
-                  <Td>{r.category}</Td>
-                  <Td>{r.suppliers}</Td>
-                  <Td>{fmt(r.spend)}</Td>
-                  <Td>{fmt(r.emissions_kgco2e)}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <SectionCard title="By Category">
+        <div className="mb-4">
+          <ChartContainer config={supplierChartConfig} className="h-[320px] w-full">
+            <BarChart data={chartData}>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="category" tickLine={false} axisLine={false} tickMargin={8} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+              <Bar dataKey="spend" fill="var(--color-spend)" radius={6} />
+              <Bar dataKey="emissions" fill="var(--color-emissions)" radius={6} />
+            </BarChart>
+          </ChartContainer>
         </div>
-      </section>
+        <DataTableShell>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Category</TableHead>
+                <TableHead>Responded suppliers</TableHead>
+                <TableHead>Spend</TableHead>
+                <TableHead>Reported Emissions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(cov?.byCategory ?? []).map((r) => (
+                <TableRow key={r.category}>
+                  <TableCell>{r.category}</TableCell>
+                  <TableCell>{r.suppliers}</TableCell>
+                  <TableCell>{fmt(r.spend)}</TableCell>
+                  <TableCell>{fmt(r.emissions_kgco2e)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DataTableShell>
+      </SectionCard>
 
       {open && <SupplierInviteModal periodStart={activePs} periodEnd={activePe} onClose={() => setOpen(false)} />}
     </div>
@@ -195,15 +244,21 @@ export default function SuppliersPage() {
 }
 
 function Card({ label, value, testId }: { label: string; value: number | string; testId: string }) {
-  return <Box><div style={{ fontSize: 12, opacity: 0.8 }}>{label}</div><div data-test={testId} style={{ fontSize: 24, fontWeight: 600 }}>{value}</div></Box>
+  return <StatCard label={label} value={value} testId={testId} />
 }
-function Box({ children }: { children: React.ReactNode }) {
-  return <div style={{ border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>{children}</div>
-}
-function Th({ children }: { children: React.ReactNode }) { return <th style={{ textAlign: 'left', padding: 8, background: '#11182f', borderBottom: '1px solid #223' }}>{children}</th> }
-function Td({ children, colSpan, style }: { children: React.ReactNode; colSpan?: number; style?: React.CSSProperties }) { return <td colSpan={colSpan} style={{ padding: 8, borderBottom: '1px solid #223', ...(style || {}) }}>{children}</td> }
 function iso(d: Date) { return d.toISOString().slice(0, 10) }
 function todayISO() { return iso(new Date()) }
 function toQuarterStart(s: string) { const d = new Date(s); const qs = new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1); return iso(qs) }
 function quarterRange(date: string) { const d = new Date(date); const qs = new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1); const qe = new Date(qs.getFullYear(), qs.getMonth() + 3, 0); return { ps: iso(qs), pe: iso(qe) } }
 function fmt(n: number) { try { return Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n) } catch { return String(n) } }
+
+const supplierChartConfig = {
+  spend: {
+    label: 'Spend',
+    color: 'hsl(var(--chart-1))',
+  },
+  emissions: {
+    label: 'Emissions',
+    color: 'hsl(var(--chart-3))',
+  },
+} satisfies ChartConfig

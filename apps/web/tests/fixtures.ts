@@ -8,10 +8,10 @@ type Fixtures = {
 
 const tenantId = process.env.NEXT_PUBLIC_TENANT_ID ?? process.env.E2E_TENANT_ID ?? '00000000-0000-0000-0000-00000000e2e1'
 const userId = process.env.NEXT_PUBLIC_USER_ID ?? process.env.E2E_USER_ID ?? '00000000-0000-0000-0000-00000000e2e2'
-const apiBaseURL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const apiBaseURL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5051'
 
 export const test = base.extend<Fixtures>({
-  authHeaders: async ({}, use) => {
+  authHeaders: async ({ }, use) => {
     await use({
       ...makeAuthHeaders({ tenantId, userId, role: 'ADMIN' }),
       'content-type': 'application/json'

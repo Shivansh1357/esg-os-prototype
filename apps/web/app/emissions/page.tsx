@@ -2,11 +2,31 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts'
 import { getJSON, gql } from '@/lib/api'
 import { ReportMeta } from '@/lib/reportMeta'
 import { useReportContext } from '../report-context'
 import ReportContextBanner from '@/components/ReportContextBanner'
 import { getClientRole } from '@/lib/role'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import {
+  KpiGrid,
+  PageHeader,
+  SectionCard,
+  StatCard,
+  StatusBanner,
+} from '@/components/product'
 
 type Totals = {
   scope1: number | null
@@ -108,93 +128,145 @@ export default function EmissionsPage() {
     onError: (e: any) => setNotice(e?.message || 'Failed to enqueue recalculation')
   })
 
+  const chartData = useMemo(() => {
+    const current = cur.data
+    const previous = prev.data
+    return [
+      { metric: 'Scope 1', current: current?.scope1 ?? 0, previous: previous?.scope1 ?? 0 },
+      { metric: 'Scope 2 Loc', current: current?.scope2_loc ?? 0, previous: previous?.scope2_loc ?? 0 },
+      { metric: 'Scope 2 Mkt', current: current?.scope2_mkt ?? 0, previous: previous?.scope2_mkt ?? 0 },
+      { metric: 'Scope 3', current: current?.scope3 ?? 0, previous: previous?.scope3 ?? 0 },
+    ]
+  }, [cur.data, prev.data])
+
   return (
-    <div>
+    <div className="space-y-4">
       <ReportContextBanner meta={activeReport} />
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 12 }}>
-        <div>
-          <h2 style={{ fontSize: 18, marginBottom: 6 }}>Emissions Explorer</h2>
-          <small style={{ opacity: 0.8 }}>Pick entity and quarter to view Scope 1/2/3 totals.</small>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <FactorPicker factorSetId={factorSetId} label={factorLabel} />
-          <button
-            data-test="recalc-button"
-            onClick={() => recalc.mutate()}
-            disabled={!entityId || recalc.isPending || isFrozenPeriod || !factorSetId || !canRecalc}
-            title={
-              isFrozenPeriod
-                ? 'Report is frozen. Unlocking requires creating a new report version.'
-                : !canRecalc
-                ? 'Insufficient permissions.'
-                : !factorSetId
-                ? 'No factor set configured.'
-                : 'Recalculate totals for this quarter'
-            }
-          >
-            {recalc.isPending ? 'Recalculating...' : 'Recalculate'}
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        title="Emissions Explorer"
+        description="Analyze Scope 1/2/3 totals by period and compare against prior quarter."
+        right={(
+          <div className="flex flex-wrap items-center gap-2">
+            <FactorPicker factorSetId={factorSetId} label={factorLabel} />
+            <Button
+              data-test="recalc-button"
+              onClick={() => recalc.mutate()}
+              disabled={!entityId || recalc.isPending || isFrozenPeriod || !factorSetId || !canRecalc}
+              title={
+                isFrozenPeriod
+                  ? 'Report is frozen. Unlocking requires creating a new report version.'
+                  : !canRecalc
+                  ? 'Insufficient permissions.'
+                  : !factorSetId
+                  ? 'No factor set configured.'
+                  : 'Recalculate totals for this quarter'
+              }
+            >
+              {recalc.isPending ? 'Recalculating...' : 'Recalculate'}
+            </Button>
+          </div>
+        )}
+      />
 
       {isFrozenPeriod && (
-        <div data-test="frozen-period-banner" style={{ margin: '8px 0 12px', padding: 10, border: '1px solid #274', borderRadius: 8, background: '#0f2318' }}>
+        <StatusBanner tone="success" testId="frozen-period-banner">
           <b>Frozen Snapshot</b> - this quarter is locked. Recalculation is disabled.
-          <div data-test="calc-version-badge" style={{ marginTop: 6, fontSize: 12 }}>Calc Version: {activeReport?.calcVersion ?? '—'}</div>
-        </div>
+          <div data-test="calc-version-badge" className="mt-1 text-xs">
+            Calc Version: {activeReport?.calcVersion ?? '—'}
+          </div>
+        </StatusBanner>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
-        <div>
-          <label>Entity ID</label>
-          <input placeholder="paste entity UUID" value={entityId} onChange={(e) => setEntityId(e.target.value)} />
+      <SectionCard title="Filters">
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="space-y-2">
+            <Label>Entity ID</Label>
+            <Input placeholder="paste entity UUID" value={entityId} onChange={(e) => setEntityId(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Quarter start</Label>
+            <Input type="date" value={toQuarterStart(date)} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Period</Label>
+            <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm">
+              {periodStart} → {periodEnd}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Prev. quarter</Label>
+            <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm">
+              {prevPs} → {prevPe}
+            </div>
+          </div>
         </div>
-        <div>
-          <label>Quarter start</label>
-          <input type="date" value={toQuarterStart(date)} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div>
-          <label>Period</label>
-          <div style={{ padding: 8, border: '1px solid #233', borderRadius: 8 }}>{periodStart} → {periodEnd}</div>
-        </div>
-        <div>
-          <label>Prev. quarter</label>
-          <div style={{ padding: 8, border: '1px solid #233', borderRadius: 8 }}>{prevPs} → {prevPe}</div>
-        </div>
-      </div>
+      </SectionCard>
 
-      {notice && <div data-test="recalc-notice" style={{ margin: '10px 0 16px', padding: 10, border: '1px solid #335', borderRadius: 8, background: '#0f1630' }}>{notice}</div>}
+      {notice && <StatusBanner tone="info" testId="recalc-notice">{notice}</StatusBanner>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(220px,1fr))', gap: 12, marginTop: 8 }}>
+      <KpiGrid>
         <Card title="Scope 1" value={cur.data?.scope1} deltaPct={deltas?.s1} />
         <Card title="Scope 2 (loc)" value={cur.data?.scope2_loc} deltaPct={deltas?.s2l} />
         <Card title="Scope 2 (mkt)" value={cur.data?.scope2_mkt} deltaPct={deltas?.s2m} />
         <Card title="Scope 3" value={cur.data?.scope3} deltaPct={deltas?.s3} />
-      </div>
+      </KpiGrid>
+
+      <SectionCard title="Quarter-over-Quarter Comparison">
+        <ChartContainer
+          className="h-[320px] w-full"
+          config={chartConfig}
+        >
+          <BarChart data={chartData}>
+            <CartesianGrid vertical={false} />
+            <XAxis dataKey="metric" tickLine={false} axisLine={false} tickMargin={8} />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+            <Bar dataKey="current" fill="var(--color-current)" radius={6} />
+            <Bar dataKey="previous" fill="var(--color-previous)" radius={6} />
+          </BarChart>
+        </ChartContainer>
+      </SectionCard>
     </div>
   )
 }
+
+const chartConfig = {
+  current: {
+    label: "Current quarter",
+    color: "hsl(var(--chart-1))",
+  },
+  previous: {
+    label: "Previous quarter",
+    color: "hsl(var(--chart-2))",
+  },
+} satisfies ChartConfig
 
 function Card({ title, value, deltaPct }: { title: string, value: number | null | undefined, deltaPct?: number | null }) {
   const v = value ?? 0
   const hasDelta = typeof deltaPct === 'number'
-  const color = hasDelta ? (deltaPct! <= 0 ? '#5fcf65' : '#ff7474') : '#aaa'
+  const color = hasDelta ? (deltaPct! <= 0 ? 'text-success' : 'text-destructive') : 'text-muted-foreground'
   const deltaTxt = hasDelta ? `${deltaPct! > 0 ? '▲' : deltaPct! < 0 ? '▼' : ''} ${Math.abs(deltaPct!).toFixed(2)}%` : '—'
   return (
-    <div style={{ border: '1px solid #223', borderRadius: 10, padding: 12, background: '#0b1020' }}>
-      <div style={{ fontSize: 12, opacity: 0.8 }}>{title}</div>
-      <div style={{ fontSize: 24, fontWeight: 600, marginTop: 6 }}>{formatNumber(v)} <span style={{ fontSize: 12 }}>kgCO2e</span></div>
-      <div style={{ marginTop: 6, fontSize: 12, color }}>{deltaTxt} vs prev qtr</div>
-    </div>
+    <StatCard
+      label={title}
+      value={<>{formatNumber(v)} <span className="text-xs font-medium text-muted-foreground">kgCO2e</span></>}
+      hint={<span className={color}>{deltaTxt} vs prev qtr</span>}
+    />
   )
 }
 
 function FactorPicker({ factorSetId, label }: { factorSetId?: string, label?: string }) {
-  if (!factorSetId) return <div><span style={{ opacity: 0.6 }}>Factor set: default (view-only)</span></div>
+  if (!factorSetId) return <Badge variant="outline">Factor set: default (view-only)</Badge>
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <span style={{ opacity: 0.8 }}>Factor set</span>
-      <select defaultValue={factorSetId}><option value={factorSetId}>{label || 'Default'}</option></select>
+    <div className="flex items-center gap-2">
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">Factor set</span>
+      <Select defaultValue={factorSetId}>
+        <SelectTrigger className="w-[180px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={factorSetId}>{label || 'Default'}</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   )
 }

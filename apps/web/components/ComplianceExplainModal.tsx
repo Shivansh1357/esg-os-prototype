@@ -1,6 +1,14 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import { postAI } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export default function ComplianceExplainModal({
   finding,
@@ -17,7 +25,7 @@ export default function ComplianceExplainModal({
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       setBusy(true); setErr(null)
       try {
         const res = await postAI<{ bullets: string[]; checklist: Array<{label:string; done:boolean}> }>(
@@ -40,44 +48,36 @@ export default function ComplianceExplainModal({
   }, [finding, period])
 
   return (
-    <div style={backdrop()}>
-      <div style={card()}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <h3 style={{ marginTop:0 }}>Guidance — {finding.ruleCode}</h3>
-          <button onClick={onClose}>Close</button>
-        </div>
-        {busy && <p style={{ opacity:0.8 }}>Loading…</p>}
-        {err && <p style={{ color:'#ff8d8d' }}>{err}</p>}
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader className="flex flex-row items-center justify-between gap-2">
+          <DialogTitle>Guidance — {finding.ruleCode}</DialogTitle>
+          <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
+        </DialogHeader>
+        {busy && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {err && <p className="text-sm text-destructive">{err}</p>}
         {!busy && !err && (
-          <>
-            <div style={{ marginTop:6 }}>
-              <ul style={{ margin:'0 0 0 18px' }}>
-                {bullets.map((b,i)=><li key={i}>{b}</li>)}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <h4 className="mb-2 text-sm font-semibold">Recommendations</h4>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                {bullets.map((b, i) => <li key={i}>{b}</li>)}
               </ul>
             </div>
-            <div style={{ marginTop:12 }}>
-              <h4 style={{ margin:'8px 0 4px' }}>Checklist</h4>
-              <ul style={{ margin:'0 0 0 18px' }}>
-                {checklist.map((c,i)=>(
-                  <li key={i}>
-                    <input type="checkbox" checked={c.done} readOnly style={{ marginRight:8 }} />
-                    {c.label}
+            <div>
+              <h4 className="mb-2 text-sm font-semibold">Checklist</h4>
+              <ul className="space-y-2">
+                {checklist.map((c, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={c.done} readOnly className="size-4" />
+                    <span>{c.label}</span>
                   </li>
                 ))}
               </ul>
             </div>
-          </>
+          </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
-
-function backdrop(){ return { position:'fixed' as const, inset:0, background:'rgba(0,0,0,0.5)', display:'grid', placeItems:'center', zIndex:50 } }
-function card(){ return { background:'#0b1020', border:'1px solid #223', padding:16, borderRadius:10, width:700, maxWidth:'95vw' } }
-
-
-
-
-
-

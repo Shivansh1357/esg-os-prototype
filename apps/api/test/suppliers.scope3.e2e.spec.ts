@@ -21,7 +21,7 @@ describe('supplier scope3 lifecycle', () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = connectionString;
     process.env.SUPPLIER_TOKEN_SECRET = process.env.SUPPLIER_TOKEN_SECRET ?? 'supplier-dev-secret';
-    process.env.PUBLIC_ORIGIN = process.env.PUBLIC_ORIGIN ?? 'http://localhost:3000';
+    process.env.PUBLIC_ORIGIN = process.env.PUBLIC_ORIGIN ?? 'http://localhost:5050';
 
     const client = await pool.connect();
     try {

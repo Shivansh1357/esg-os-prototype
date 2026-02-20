@@ -29,7 +29,7 @@ export class SuppliersController {
     requireRole('ADMIN', 'MEMBER');
     const client = pgClientFrom(req);
     const ttl = Number(process.env.SUPPLIER_INVITE_TTL_HOURS || '168');
-    const origin = process.env.PUBLIC_ORIGIN || 'http://localhost:3001';
+    const origin = process.env.PUBLIC_ORIGIN || 'http://localhost:5051';
     const created: InviteOut = { count: 0, invites: [] };
     for (const s of body.suppliers) {
       const up = await client.query(
@@ -40,7 +40,7 @@ export class SuppliersController {
         [s.name, s.email, s.category, s.spend]
       );
       const supplierId = up.rows[0].id as string;
-      const expires = new Date(Date.now() + ttl*3600*1000);
+      const expires = new Date(Date.now() + ttl * 3600 * 1000);
       await client.query(
         `INSERT INTO esg.supplier_invites(tenant_id, supplier_id, period_start, period_end, invited_email, expires_at)
          VALUES (app.current_tenant(), $1, $2, $3, $4, $5)`,

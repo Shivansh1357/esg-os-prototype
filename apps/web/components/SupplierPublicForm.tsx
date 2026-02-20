@@ -1,5 +1,18 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 
 const t = {
   en: {
@@ -35,7 +48,7 @@ export default function SupplierPublicForm({ token }: { token: string }) {
   const [err, setErr] = useState<string| null>(null)
 
   useEffect(()=> {
-    (async ()=>{
+    ;(async ()=>{
       try {
         const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/s/${token}`)
         if (!r.ok) throw new Error(await r.text())
@@ -101,20 +114,24 @@ export default function SupplierPublicForm({ token }: { token: string }) {
   if (ok) return (
     <Container>
       <LangSwitcher lang={lang} setLang={setLang} />
-      <h2>{L.thanks}</h2>
+      <Card className="glass-card border-success/40">
+        <CardContent className="pt-6">
+          <h2 className="font-heading text-2xl font-semibold">{L.thanks}</h2>
+        </CardContent>
+      </Card>
     </Container>
   )
 
   return (
     <Container>
       <LangSwitcher lang={lang} setLang={setLang} />
-      <h2>{L.title}</h2>
-      {err && <div style={{ color:'#ff8d8d' }}>{err}</div>}
-      {!info ? <p style={{ opacity:0.7 }}>Loading…</p> : (
+      <h2 className="font-heading text-3xl font-semibold tracking-tight">{L.title}</h2>
+      {err && <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{err}</div>}
+      {!info ? <p className="mt-3 text-sm text-muted-foreground">Loading…</p> : (
         <>
           <Box>
-            <p style={{ marginTop:0, opacity:0.9 }}>{L.intro}</p>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8 }}>
+            <p className="mb-3 text-sm text-muted-foreground">{L.intro}</p>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <Field label={L.name}><b>{info.supplier.name}</b></Field>
               <Field label={L.category}>{info.supplier.category}</Field>
               <Field label={L.spend}>{fmt(info.supplier.spend)}</Field>
@@ -123,36 +140,39 @@ export default function SupplierPublicForm({ token }: { token: string }) {
           </Box>
 
           <Box>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div>
-                <label>{L.emissions}</label>
-                <input type="number" value={String(emissions)} onChange={e=>setEmissions(Number(e.target.value||0))} />
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{L.emissions}</Label>
+                <Input type="number" value={String(emissions)} onChange={e=>setEmissions(Number(e.target.value||0))} />
               </div>
-              <div>
-                <label>Data quality tier</label>
-                <select value={tier} onChange={(e)=>setTier(e.target.value as 'PRIMARY'|'SECONDARY'|'ESTIMATED')}>
-                  <option value="PRIMARY">PRIMARY</option>
-                  <option value="SECONDARY">SECONDARY</option>
-                  <option value="ESTIMATED">ESTIMATED</option>
-                </select>
-              </div>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:12, marginTop:12 }}>
-              <div>
-                <label>{L.evidence}</label>
-                <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" onChange={(e)=>setEvidenceFile(e.target.files?.[0]||null)} />
-                <div style={{ marginTop:8, display:'flex', gap:8 }}>
-                  <button onClick={uploadEvidence} disabled={!evidenceFile || busy}>{busy ? L.uploading : L.upload}</button>
-                  {evidenceUrl && <span style={{ fontSize:12, opacity:0.8 }}>Attached</span>}
-                </div>
+              <div className="space-y-2">
+                <Label>Data quality tier</Label>
+                <Select value={tier} onValueChange={(v) => setTier(v as 'PRIMARY'|'SECONDARY'|'ESTIMATED')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PRIMARY">PRIMARY</SelectItem>
+                    <SelectItem value="SECONDARY">SECONDARY</SelectItem>
+                    <SelectItem value="ESTIMATED">ESTIMATED</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div style={{ marginTop:12 }}>
-              <label>{L.method}</label>
-              <textarea rows={4} value={notes} onChange={e=>setNotes(e.target.value)} />
+            <div className="mt-3 space-y-2">
+              <Label>{L.evidence}</Label>
+              <Input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" onChange={(e)=>setEvidenceFile(e.target.files?.[0]||null)} />
+              <div className="flex items-center gap-2">
+                <Button onClick={uploadEvidence} disabled={!evidenceFile || busy}>{busy ? L.uploading : L.upload}</Button>
+                {evidenceUrl ? <Badge variant="secondary">Attached</Badge> : null}
+              </div>
             </div>
-            <div style={{ marginTop:12 }}>
-              <button data-test="supplier-submit" onClick={submit} disabled={busy}>{L.submit}</button>
+            <div className="mt-3 space-y-2">
+              <Label>{L.method}</Label>
+              <Textarea rows={4} value={notes} onChange={e=>setNotes(e.target.value)} />
+            </div>
+            <div className="mt-3">
+              <Button data-test="supplier-submit" onClick={submit} disabled={busy}>{L.submit}</Button>
             </div>
           </Box>
         </>
@@ -161,24 +181,25 @@ export default function SupplierPublicForm({ token }: { token: string }) {
   )
 }
 
-/* ---- UI helpers ---- */
 function Container({ children }:{ children:React.ReactNode }) {
-  return <div style={{ maxWidth:760, margin:'24px auto', padding:'0 16px', color:'#eaeefb', fontFamily:'Inter, system-ui, sans-serif' }}>{children}</div>
+  return <div className="mx-auto mt-8 max-w-4xl px-4 text-foreground">{children}</div>
 }
 function Box({ children }:{ children:React.ReactNode }) {
-  return <div style={{ border:'1px solid #223', borderRadius:10, padding:12, background:'#0b1020', marginTop:12 }}>{children}</div>
+  return (
+    <Card className="glass-card mt-3">
+      <CardContent className="pt-4">{children}</CardContent>
+    </Card>
+  )
 }
 function Field({ label, children }:{ label:string; children:React.ReactNode }) {
-  return <div><div style={{ fontSize:12, opacity:0.8 }}>{label}</div><div>{children}</div></div>
+  return <div><div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-1">{children}</div></div>
 }
 function LangSwitcher({ lang, setLang }:{ lang:'en'|'hi'; setLang:(l:'en'|'hi')=>void }) {
   return (
-    <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginBottom:8 }}>
-      <button onClick={()=>setLang('en')} disabled={lang==='en'}>English</button>
-      <button onClick={()=>setLang('hi')} disabled={lang==='hi'}>हिन्दी</button>
+    <div className="mb-3 flex justify-end gap-2">
+      <Button variant={lang==='en' ? 'default' : 'outline'} size="sm" onClick={()=>setLang('en')} disabled={lang==='en'}>English</Button>
+      <Button variant={lang==='hi' ? 'default' : 'outline'} size="sm" onClick={()=>setLang('hi')} disabled={lang==='hi'}>हिन्दी</Button>
     </div>
   )
 }
 function fmt(n:number){ try{ return Intl.NumberFormat(undefined,{ maximumFractionDigits:0}).format(n) }catch{ return String(n)} }
-
-
