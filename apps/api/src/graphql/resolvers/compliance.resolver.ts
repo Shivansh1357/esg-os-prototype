@@ -10,9 +10,13 @@ export class ComplianceResolver {
   async gapMap(
     @Args('periodStart') periodStart: string,
     @Args('periodEnd') periodEnd: string,
+    @Args('framework', { nullable: true }) framework?: string,
     @Context() ctx?: { req: Request }
   ) {
     const client = pgClientFrom(ctx?.req as Request);
+    const frameworkFilter = framework ? `AND r.framework = $3` : '';
+    const params: any[] = [periodStart, periodEnd];
+    if (framework) params.push(framework);
     const r = await client.query(
       `SELECT f.id, f.rule_code, f.status::text AS status, f.severity, f.reason, f.evidence_url, f.owner, f.due_date,
               f.completeness_weight, r.framework, r.description, r.metric_code, r.requires_evidence,
@@ -20,8 +24,9 @@ export class ComplianceResolver {
          FROM esg.compliance_findings f
          JOIN esg.compliance_rules r ON r.id = f.rule_id
         WHERE f.tenant_id = app.current_tenant() AND f.period_start=$1 AND f.period_end=$2
+              ${frameworkFilter}
         ORDER BY (f.status <> 'PASS') DESC, f.severity DESC, f.rule_code`,
-      [periodStart, periodEnd]
+      params
     );
     return r.rows.map((x) => ({
       id: x.id,

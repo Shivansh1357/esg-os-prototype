@@ -47,7 +47,14 @@ type Finding = {
   principle?: string | null
   brsrSection?: string | null
   description?: string | null
+  framework?: string | null
 }
+
+const FRAMEWORK_OPTIONS = [
+  { value: 'ALL', label: 'All frameworks' },
+  { value: 'BRSR_CORE', label: 'BRSR (India)' },
+  { value: 'GRI_2021', label: 'GRI Standards 2021' },
+]
 
 const PRINCIPLE_LABELS: Record<string, string> = {
   P1: 'P1 — Ethics, Transparency & Accountability',
@@ -62,9 +69,9 @@ const PRINCIPLE_LABELS: Record<string, string> = {
 }
 
 const GAPMAP = `
-query G($periodStart:String!, $periodEnd:String!){
-  gapMap(periodStart:$periodStart, periodEnd:$periodEnd){
-    id ruleCode status severity reason evidenceUrl owner dueDate principle brsrSection description
+query G($periodStart:String!, $periodEnd:String!, $framework:String){
+  gapMap(periodStart:$periodStart, periodEnd:$periodEnd, framework:$framework){
+    id ruleCode status severity reason evidenceUrl owner dueDate principle brsrSection description framework
   }
 }`
 
@@ -98,12 +105,17 @@ export default function CompliancePage() {
 
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'FAIL' | 'RISK' | 'PASS'>('ALL')
   const [principleFilter, setPrincipleFilter] = useState<string>('ALL')
+  const [frameworkFilter, setFrameworkFilter] = useState<string>('ALL')
   const [search, setSearch] = useState('')
 
   const q = useQuery({
-    queryKey: ['gapMap', periodStart, periodEnd],
+    queryKey: ['gapMap', periodStart, periodEnd, frameworkFilter],
     enabled: !isFrozenPeriod,
-    queryFn: async () => (await gql<{ gapMap: Finding[] }>(GAPMAP, { periodStart, periodEnd })).gapMap
+    queryFn: async () => (await gql<{ gapMap: Finding[] }>(GAPMAP, {
+      periodStart,
+      periodEnd,
+      framework: frameworkFilter === 'ALL' ? null : frameworkFilter
+    })).gapMap
   })
 
   const snapshotRows = useMemo(() => ((activeReport?.complianceSnapshot as Finding[] | null) ?? []), [activeReport?.complianceSnapshot])
@@ -213,7 +225,7 @@ export default function CompliancePage() {
       )}
 
       <SectionCard title="Findings">
-        <div className="mb-3 grid gap-2 md:grid-cols-[180px_180px_1fr_auto]">
+        <div className="mb-3 grid gap-2 md:grid-cols-[160px_160px_160px_1fr_auto]">
           <Select value={statusFilter} onValueChange={value => setStatusFilter(value as any)}>
             <SelectTrigger>
               <SelectValue />
@@ -233,6 +245,16 @@ export default function CompliancePage() {
               <SelectItem value="ALL">All principles</SelectItem>
               {Object.entries(PRINCIPLE_LABELS).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={frameworkFilter} onValueChange={value => setFrameworkFilter(value)}>
+            <SelectTrigger data-test="framework-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FRAMEWORK_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>

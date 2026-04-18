@@ -102,10 +102,10 @@ ALL of the following must be true:
 - [ ] AI-generated executive narrative with trend attribution
 
 ### Multi-Framework Support (Beyond BRSR)
-- [ ] Add GRI framework mapping alongside BRSR
+- [x] Add GRI framework mapping alongside BRSR
 - [ ] Add CDP questionnaire template support
 - [ ] Add ISSB (IFRS S1/S2) alignment indicators
-- [ ] Framework cross-mapping (show which BRSR disclosures also satisfy GRI/CDP)
+- [x] Framework cross-mapping (show which BRSR disclosures also satisfy GRI/CDP)
 
 ### Advanced Scope 3
 - [ ] Spend-based estimation for suppliers who don't respond

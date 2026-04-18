@@ -20,3 +20,4 @@
 150_pilot_onboarding 2026-02-17T00:00:00Z ESG OS <dev@esg-os.local> # pilot: onboarding metrics, feedback, checklist helpers
 160_brsr_ngrbc_principles 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # brsr: 9 NGRBC principles + BRSR Core KPIs + new metrics
 170_audit_pack_format 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # reports: allow zip/json format in report_artifacts
+180_gri_framework_mapping 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # gri: GRI 2021 standards + BRSR cross-mapping
