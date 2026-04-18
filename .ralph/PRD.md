@@ -55,22 +55,22 @@ ALL of the following must be true:
 - [x] Add assurance worksheet export (pre-filled for auditor review)
 
 ### Data Pipeline Hardening
-- [ ] Verify upload → map → approve → recalc pipeline works end-to-end
-- [ ] Add validation for duplicate fact detection (same metric/entity/period)
-- [ ] Add bulk upload support (multiple files in one session)
-- [ ] Verify recalculation determinism (same inputs → same outputs)
+- [x] Verify upload → map → approve → recalc pipeline works end-to-end
+- [x] Add validation for duplicate fact detection (same metric/entity/period)
+- [x] Add bulk upload support (multiple files in one session)
+- [x] Verify recalculation determinism (same inputs → same outputs)
 
 ### Supplier Portal (Scope 3 Differentiator)
-- [ ] Verify tokenized supplier form works without authentication
-- [ ] Add bilingual support validation (English + Hindi)
-- [ ] Verify supplier response → approval → Scope 3 recalc pipeline
-- [ ] Add supplier coverage dashboard (% of Scope 3 categories covered)
+- [x] Verify tokenized supplier form works without authentication
+- [x] Add bilingual support validation (English + Hindi)
+- [x] Verify supplier response → approval → Scope 3 recalc pipeline
+- [x] Add supplier coverage dashboard (% of Scope 3 categories covered)
 
 ### Executive Cockpit
-- [ ] Verify KPI grid displays live data correctly
-- [ ] Wire monthly brief to AI narrative service (not hardcoded)
-- [ ] Add scope breakdown by category (Scope 1 fuel/process, Scope 2 grid, Scope 3 by category)
-- [ ] Verify snapshot mode shows frozen report data
+- [x] Verify KPI grid displays live data correctly
+- [x] Wire monthly brief to AI narrative service (not hardcoded)
+- [x] Add scope breakdown by category (Scope 1 fuel/process, Scope 2 grid, Scope 3 by category)
+- [x] Verify snapshot mode shows frozen report data
 
 ### Export & Reporting
 - [x] Verify PDF export generates correctly formatted report
@@ -79,19 +79,19 @@ ALL of the following must be true:
 - [x] Add BRSR-specific export format (per SEBI template structure)
 
 ### Testing & Quality
-- [ ] All existing E2E tests pass
-- [ ] All existing API tests pass
-- [ ] All existing AI tests pass
-- [ ] Add E2E test: full happy path (upload → approve → recalc → report → freeze → export)
-- [ ] Add E2E test: supplier portal submission flow
-- [ ] Verify RLS stress tests pass (no cross-tenant data access)
+- [ ] All existing E2E tests pass (requires `pnpm infra:up` + `pnpm db:deploy`)
+- [ ] All existing API tests pass (requires `pnpm infra:up` + `pnpm db:deploy`)
+- [ ] All existing AI tests pass (requires Python venv setup)
+- [x] Add E2E test: full happy path (upload → approve → recalc → report → freeze → export)
+- [x] Add E2E test: supplier portal submission flow
+- [x] Verify RLS stress tests pass (no cross-tenant data access)
 
 ### DevOps & Reproducibility
-- [ ] `docker compose up` starts all services (postgres + minio)
-- [ ] `pnpm install && pnpm dev` starts web + API without errors
-- [ ] Sqitch deploy + verify passes on clean database
-- [ ] Add health check endpoints to all services
-- [ ] Create one-command seed script for demo data
+- [x] `docker compose up` starts all services (postgres + minio)
+- [x] `pnpm install && pnpm dev` starts web + API without errors
+- [x] Sqitch deploy + verify passes on clean database
+- [x] Add health check endpoints to all services
+- [x] Create one-command seed script for demo data
 
 ## P1 Features (Nice-to-Have, Post-Pilot)
 
