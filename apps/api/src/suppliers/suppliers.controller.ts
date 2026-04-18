@@ -4,7 +4,7 @@ import { pgClientFrom } from '../db/reqpg';
 import { signSupplierToken } from '../public/token';
 import { getDefaultFactorSetId } from '../db/factors';
 import { enforceRateLimit, requireRole } from '../rbac/access';
-import { incMetric } from '../observability/metrics';
+import { incMetric, observeMetric } from '../observability/metrics';
 
 type InviteIn = { periodStart: string; periodEnd: string; suppliers: Array<{ name: string; email: string; category: string; spend: number }>; };
 type InviteOut = { count: number; invites: Array<{ supplierId: string; email: string; url: string; expiresAt: string }> };
@@ -154,14 +154,61 @@ export class SuppliersController {
       const entityId = org.rows[0].id as string;
       const periodStart = locked.rows[0].period_start as string;
       const periodEnd = locked.rows[0].period_end as string;
+      const recalcStartedAt = Date.now();
       await client.query(`SELECT esg.recalc_emissions($1,$2,$3,$4,$5)`, [tid, entityId, periodStart, periodEnd, fsId]);
       incMetric('recalc_total');
+      observeMetric('recalc_duration_ms', Date.now() - recalcStartedAt);
     }
 
     await client.query(`SELECT esg.refresh_exec_kpi_base()`);
 
     return { ok: true };
   }
-}
 
+  @Post('/suppliers/spend')
+  async recordSpend(
+    @Body() body: { periodStart: string; periodEnd: string; items: Array<{ supplierName: string; categoryCode: string; spendINR: number }> },
+    @Req() req: Request
+  ) {
+    requireRole('ADMIN', 'MEMBER');
+    const client = pgClientFrom(req);
+    const tid = (await client.query(`SELECT current_setting('app.tenant_id', true) AS tid`)).rows[0].tid;
+    let inserted = 0;
+    for (const item of body.items) {
+      await client.query(
+        `INSERT INTO esg.supplier_spend (tenant_id, supplier_name, category_code, period_start, period_end, spend_inr)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (tenant_id, supplier_name, category_code, period_start, period_end)
+         DO UPDATE SET spend_inr = EXCLUDED.spend_inr`,
+        [tid, item.supplierName, item.categoryCode, body.periodStart, body.periodEnd, item.spendINR]
+      );
+      inserted++;
+    }
+    return { inserted };
+  }
+
+  @Post('/suppliers/estimate-scope3')
+  async estimateScope3(
+    @Body() body: { periodStart: string; periodEnd: string },
+    @Req() req: Request
+  ) {
+    requireRole('ADMIN', 'MEMBER');
+    const client = pgClientFrom(req);
+    const tid = (await client.query(`SELECT current_setting('app.tenant_id', true) AS tid`)).rows[0].tid;
+    const result = await client.query(
+      `SELECT esg.estimate_scope3_from_spend($1, $2, $3) AS result`,
+      [tid, body.periodStart, body.periodEnd]
+    );
+    return result.rows[0]?.result ?? { totalSpendINR: 0, estimatedKgCO2e: 0, categoryCount: 0 };
+  }
+
+  @Get('/suppliers/eeio-factors')
+  async getEeioFactors(@Req() req: Request) {
+    const client = pgClientFrom(req);
+    const result = await client.query(
+      `SELECT category_code, category_name, factor_kgco2e_per_inr, source, year FROM esg.eeio_factors ORDER BY category_name`
+    );
+    return result.rows;
+  }
+}
 

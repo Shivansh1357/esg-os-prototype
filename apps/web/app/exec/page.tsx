@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Pie, PieChart, Cell } from 'recharts'
-import { getJSON } from '@/lib/api'
+import { getJSON, postAI } from '@/lib/api'
 import { useReportContext } from '../report-context'
 import { Badge } from '@/components/ui/badge'
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -44,7 +44,49 @@ export default function ExecPage() {
     queryFn: async () => await getJSON<ExecPayload>(`/exec/${reportId}`)
   })
 
-  const bullets = useMemo(() => buildBrief(exec.data), [exec.data])
+  const staticBullets = useMemo(() => buildBrief(exec.data), [exec.data])
+  const [aiBrief, setAiBrief] = useState<string[] | null>(null)
+  const [briefLoading, setBriefLoading] = useState(false)
+
+  useEffect(() => {
+    if (!exec.data) return
+    const d = exec.data
+    setBriefLoading(true)
+    const totals: Record<string, number | undefined> = {}
+    const deltaPct: Record<string, number | undefined> = {}
+    for (const kpi of d.kpis) {
+      if (kpi.name === 'Scope 1 emissions') { totals.s1 = kpi.value ?? undefined; deltaPct.s1 = kpi.delta ?? undefined }
+      if (kpi.name === 'Scope 2 (location)') { totals.s2_loc = kpi.value ?? undefined; deltaPct.s2_loc = kpi.delta ?? undefined }
+      if (kpi.name === 'Scope 2 (market)') { totals.s2_mkt = kpi.value ?? undefined; deltaPct.s2_mkt = kpi.delta ?? undefined }
+      if (kpi.name === 'Scope 3 emissions') { totals.s3 = kpi.value ?? undefined; deltaPct.s3 = kpi.delta ?? undefined }
+    }
+    const compKpi = d.kpis.find(k => k.name === 'Compliance %')
+    const suppKpi = d.kpis.find(k => k.name === 'Supplier coverage %')
+
+    postAI<{ text: string }>('/narrative/section', {
+      template: 'BRSR',
+      section: 'EMISSIONS',
+      periodStart: d.periodStart,
+      periodEnd: d.periodEnd,
+      kpis: {
+        totals,
+        yoy: { deltaPct },
+        completeness: { percent: compKpi?.value },
+        suppliers: { coveragePercent: suppKpi?.value },
+      },
+      tone: 'executive',
+    })
+      .then(res => {
+        if (res.text) {
+          const sentences = res.text.split('. ').filter(s => s.trim().length > 15).map(s => s.trim().replace(/\.?$/, '.'))
+          setAiBrief(sentences.slice(0, 6))
+        }
+      })
+      .catch(() => { /* fallback to static bullets */ })
+      .finally(() => setBriefLoading(false))
+  }, [exec.data])
+
+  const bullets = aiBrief ?? staticBullets
 
   if (!reportId) {
     return (
@@ -142,9 +184,13 @@ export default function ExecPage() {
           </SectionCard>
 
           <SectionCard title="Executive Brief">
+            {briefLoading && <p className="text-xs text-muted-foreground animate-pulse">Generating AI narrative...</p>}
             <ul className="list-disc space-y-1 pl-5 text-sm">
               {bullets.map((bullet, i) => <li key={i}>{bullet}</li>)}
             </ul>
+            {aiBrief && (
+              <p className="mt-2 text-xs text-muted-foreground">AI-generated narrative with trend attribution</p>
+            )}
           </SectionCard>
         </>
       )}

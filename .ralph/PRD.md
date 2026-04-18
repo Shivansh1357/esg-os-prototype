@@ -99,7 +99,7 @@ ALL of the following must be true:
 - [x] AI-powered anomaly detection on uploaded data (flag outliers with explanation)
 - [ ] Auto-suggest remediation actions for compliance gaps
 - [ ] Multi-language OCR support (Hindi + English utility bills)
-- [ ] AI-generated executive narrative with trend attribution
+- [x] AI-generated executive narrative with trend attribution
 
 ### Multi-Framework Support (Beyond BRSR)
 - [x] Add GRI framework mapping alongside BRSR
@@ -108,7 +108,7 @@ ALL of the following must be true:
 - [x] Framework cross-mapping (show which BRSR disclosures also satisfy GRI/CDP)
 
 ### Advanced Scope 3
-- [ ] Spend-based estimation for suppliers who don't respond
+- [x] Spend-based estimation for suppliers who don't respond
 - [ ] Supplier ESG scoring and risk flagging
 - [ ] Category-level emission factor recommendations
 - [ ] Value chain BRSR Core collection (per SEBI requirement)
