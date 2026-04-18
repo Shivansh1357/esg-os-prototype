@@ -21,6 +21,7 @@
     "test:all": "Run tests across all workspace packages.",
     "test": "Alias for full workspace test run.",
     "verify:confidence": "Run API JWT tests, web E2E, web lint, and web production build.",
+    "governance:check": "Run strict multi-agent governance enforcement checks against PR diffs.",
     "lint": "Run lints across all workspace packages.",
     "sqitch:deploy:esg": "Run Sqitch deploy against local standalone Postgres URL.",
     "sqitch:verify:esg": "Run Sqitch verify against local standalone Postgres URL.",
@@ -53,6 +54,7 @@
     "test:all": "pnpm -r test",
     "test": "pnpm test:all",
     "verify:confidence": "pnpm test:api:jwt && pnpm test:web:e2e && pnpm --filter @apps/web lint && pnpm --filter @apps/web build",
+    "governance:check": "tsx scripts/governance-check.ts",
     "lint": "pnpm -r lint",
     "sqitch:deploy:esg": "sqitch deploy db:pg://postgres:esg@localhost:5432/esg-os",
     "sqitch:verify:esg": "sqitch verify db:pg://postgres:esg@localhost:5432/esg-os",
@@ -67,7 +69,10 @@
   "devDependencies": {
     "@playwright/test": "^1.54.2",
     "concurrently": "^9.0.0",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "minimatch": "^10.1.1",
+    "tsx": "^4.20.5",
+    "yaml": "^2.8.1"
   },
   "dependencies": {
     "graphile-worker": "^0.16.6"

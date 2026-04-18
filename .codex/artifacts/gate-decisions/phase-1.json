@@ -1,0 +1,19 @@
+{
+  "phase": 1,
+  "status": "APPROVE",
+  "approver": "orchestrator",
+  "timestamp": "2026-02-20T00:00:00Z",
+  "evidence_refs": [
+    "pnpm infra:up",
+    "pnpm db:refresh",
+    "pnpm --filter @apps/api test -- rls.e2e.spec.ts",
+    "pnpm --filter @apps/web build"
+  ],
+  "exceptions": [],
+  "check_results": [
+    { "name": "infra-up", "status": "pass" },
+    { "name": "db-refresh", "status": "pass" },
+    { "name": "rls-suite", "status": "pass" },
+    { "name": "web-build", "status": "pass" }
+  ]
+}

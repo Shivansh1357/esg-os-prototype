@@ -40,10 +40,16 @@ const task: Task = async (payload, { logger }) => {
       [tenantId, entityId, periodStart, periodEnd, factorSetId]
     );
     await client.query('COMMIT');
-    logger.info(`calc.recalc OK entity=${entityId} ${periodStart}..${periodEnd} fs=${factorSetId} in ${Date.now()-started}ms (row=${res.rows[0]?.id})`);
+    const durationMs = Date.now() - started;
+    logger.info(
+      `calc.recalc OK tenant=${tenantId} entity=${entityId} period=${periodStart}..${periodEnd} fs=${factorSetId} duration_ms=${durationMs} row=${res.rows[0]?.id}`
+    );
   } catch (e) {
     await client.query('ROLLBACK');
-    logger.error(`calc.recalc FAIL: ${(e as Error).message}`);
+    const durationMs = Date.now() - started;
+    logger.error(
+      `calc.recalc FAIL tenant=${tenantId} entity=${entityId} period=${periodStart}..${periodEnd} fs=${factorSetId} duration_ms=${durationMs} error=${(e as Error).message}`
+    );
     throw e;
   } finally {
     client.release();
@@ -51,4 +57,3 @@ const task: Task = async (payload, { logger }) => {
 };
 
 export default task;
-

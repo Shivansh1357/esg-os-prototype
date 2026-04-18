@@ -1,0 +1,115 @@
+version: 1
+check_on:
+  - pull_request
+  - phase_gate
+
+types:
+  AgentSpec:
+    required_fields: [id, role, owned_paths, skills, forbidden_actions, required_approvals]
+  SkillSpec:
+    required_fields: [name, scope, invariants, forbidden_patterns, required_validation, expected_artifacts]
+  OwnershipLockSpec:
+    required_fields: [path_glob, owner, reviewers, precedence]
+  ContractFreezeSpec:
+    required_fields: [contract_id, source_paths, change_policy, required_signoffs]
+  StageGateSpec:
+    required_fields: [phase, risk_budget, checks, thresholds, approvers, block_on_failure]
+  StagePhaseProfileSpec:
+    required_fields: [id, name, risk_budget, allowed_change_types, blocked_paths, requires_orchestrator_for_transition]
+  ExecutionNodeSpec:
+    required_fields: [phase, lane, depends_on, outputs, gate]
+  GateDecision:
+    required_fields: [phase, status, approver, timestamp, evidence_refs, exceptions]
+
+contracts:
+  - contract_id: graphql-schema
+    description: GraphQL surface must remain backward-compatible unless approved.
+    source_paths:
+      - apps/api/src/graphql/schema.gql.ts
+      - apps/api/src/graphql/resolvers/**
+    change_policy: explicit_approval_required
+    required_signoffs: [product-owner, architecture, qa, orchestrator]
+
+  - contract_id: route-map
+    description: Next.js app route inventory is frozen by default.
+    source_paths:
+      - apps/web/app/**/page.tsx
+    frozen_routes:
+      - /
+      - /onboarding
+      - /admin/users
+      - /admin/entities
+      - /data
+      - /emissions
+      - /compliance
+      - /reports
+      - /suppliers
+      - /exec
+      - /audit
+      - /pilot
+      - /s/[token]
+    change_policy: explicit_approval_required
+    required_signoffs: [product-owner, architecture, qa, orchestrator]
+
+  - contract_id: selector-map
+    description: Playwright-referenced selectors are contract-frozen.
+    source_paths:
+      - apps/web/tests/**
+      - apps/web/app/**
+      - apps/web/components/**
+    stable_selectors:
+      - admin-invite-user
+      - approve-btn
+      - assurance-export
+      - attach-evidence
+      - audit-export-json
+      - audit-period
+      - auditor-generate
+      - auditor-readonly-banner
+      - calc-version
+      - calc-version-badge
+      - completeness
+      - completeness-bar
+      - data-upload-btn
+      - exec-calc-version-badge
+      - exec-kpi-grid
+      - exec-kpi-tile
+      - exec-mode-banner
+      - export-mode-banner
+      - export-json
+      - export-pdf
+      - export-xlsx
+      - feedback-open
+      - feedback-submit
+      - frozen-period-banner
+      - frozen-snapshot-label
+      - gap-table
+      - generate-draft
+      - invite-suppliers
+      - lineage-open
+      - mapping-accept
+      - mobile-nav-open
+      - onboarding-next
+      - onboarding-progress
+      - parse-preview
+      - pilot-summary-freeze
+      - pilot-summary-ttf
+      - recalc-button
+      - report-context-banner
+      - report-selector
+      - report-status
+      - resolve-gap-btn
+      - scope3-attribution-note
+      - scope3-internal-breakdown
+      - scope3-supplier-breakdown
+      - start-first-report
+      - supplier-coverage-count
+      - supplier-coverage-delta
+      - supplier-submit
+      - theme-toggle
+      - upload-bill-start-btn
+    selector_patterns:
+      - mapping-alt-*
+      - approve-supplier-*
+    change_policy: explicit_approval_required
+    required_signoffs: [product-owner, architecture, qa, orchestrator]

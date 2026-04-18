@@ -1,0 +1,233 @@
+version: 1
+resolution:
+  algorithm: longest_path_match_then_highest_precedence
+  deny_on_unowned_write: true
+  require_owner_agent_for_cross_domain: true
+
+locks:
+  - id: frontend-all
+    path_glob: apps/web/**
+    owner: frontend
+    reviewers: [qa, architecture]
+    precedence: 80
+
+  - id: ai-all
+    path_glob: apps/ai/**
+    owner: ai
+    reviewers: [qa, security]
+    precedence: 80
+
+  - id: compliance-api
+    path_glob: apps/api/src/compliance/**
+    owner: compliance
+    reviewers: [backend, qa, security]
+    precedence: 95
+
+  - id: reporting-api
+    path_glob: apps/api/src/reports/**
+    owner: reporting
+    reviewers: [backend, qa, architecture]
+    precedence: 95
+
+  - id: auditor-api
+    path_glob: apps/api/src/auditor/**
+    owner: reporting
+    reviewers: [backend, qa, architecture]
+    precedence: 95
+
+  - id: backend-api-fallback
+    path_glob: apps/api/src/**
+    owner: backend
+    reviewers: [qa]
+    precedence: 70
+
+  - id: compliance-sql-deploy-03
+    path_glob: sql/deploy/03*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+  - id: compliance-sql-deploy-04
+    path_glob: sql/deploy/04*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+  - id: compliance-sql-deploy-09
+    path_glob: sql/deploy/09*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+  - id: compliance-sql-revert-03
+    path_glob: sql/revert/03*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+  - id: compliance-sql-revert-04
+    path_glob: sql/revert/04*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+  - id: compliance-sql-revert-09
+    path_glob: sql/revert/09*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+  - id: compliance-sql-verify-03
+    path_glob: sql/verify/03*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+  - id: compliance-sql-verify-04
+    path_glob: sql/verify/04*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+  - id: compliance-sql-verify-09
+    path_glob: sql/verify/09*.sql
+    owner: compliance
+    reviewers: [backend, security]
+    precedence: 98
+
+  - id: reporting-sql-deploy-05
+    path_glob: sql/deploy/05*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-deploy-07
+    path_glob: sql/deploy/07*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-deploy-10
+    path_glob: sql/deploy/10*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-deploy-11
+    path_glob: sql/deploy/11*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-revert-05
+    path_glob: sql/revert/05*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-revert-07
+    path_glob: sql/revert/07*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-revert-10
+    path_glob: sql/revert/10*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-revert-11
+    path_glob: sql/revert/11*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-verify-05
+    path_glob: sql/verify/05*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-verify-07
+    path_glob: sql/verify/07*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-verify-10
+    path_glob: sql/verify/10*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+  - id: reporting-sql-verify-11
+    path_glob: sql/verify/11*.sql
+    owner: reporting
+    reviewers: [backend, architecture]
+    precedence: 98
+
+  - id: sql-fallback
+    path_glob: sql/**
+    owner: backend
+    reviewers: [security]
+    precedence: 60
+
+  - id: worker-runtime
+    path_glob: jobs/worker/**
+    owner: backend
+    reviewers: [devops, qa]
+    precedence: 90
+
+  - id: docker-runtime
+    path_glob: docker/**
+    owner: devops
+    reviewers: [security]
+    precedence: 90
+
+  - id: github-workflows
+    path_glob: .github/workflows/**
+    owner: devops
+    reviewers: [security, qa]
+    precedence: 90
+
+  - id: governance-docs
+    path_glob: .codex/multi-agent/**
+    owner: orchestrator
+    reviewers: [architecture, qa]
+    precedence: 100
+
+  - id: governance-skills
+    path_glob: .codex/skills/**
+    owner: orchestrator
+    reviewers: [architecture, qa]
+    precedence: 100
+
+  - id: gate-decisions
+    path_glob: .codex/artifacts/gate-decisions/**
+    owner: orchestrator
+    reviewers: [qa, architecture]
+    precedence: 100
+
+  - id: governance-scripts
+    path_glob: scripts/**
+    owner: devops
+    reviewers: [qa, security]
+    precedence: 88
+
+  - id: root-package-json
+    path_glob: package.json
+    owner: devops
+    reviewers: [qa]
+    precedence: 88
+
+  - id: root-lockfile
+    path_glob: pnpm-lock.yaml
+    owner: devops
+    reviewers: [qa]
+    precedence: 88
+
+  - id: global-agents-md
+    path_glob: AGENTS.md
+    owner: architecture
+    reviewers: [orchestrator, qa]
+    precedence: 97
+
+  - id: lower-agents-md
+    path_glob: agents.md
+    owner: architecture
+    reviewers: [orchestrator, qa]
+    precedence: 97
+
+  - id: docs-artifacts
+    path_glob: docs/**
+    owner: product-owner
+    reviewers: [qa, architecture]
+    precedence: 75
+
+  - id: fallback-strict
+    path_glob: "**"
+    owner: orchestrator
+    reviewers: [architecture]
+    precedence: 1

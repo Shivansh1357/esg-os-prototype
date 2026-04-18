@@ -30,6 +30,7 @@ const task: Task = async (payload, { logger }) => {
   }
 
   const { tenantId, notificationId, to, subject, body } = payload;
+  let emailSent = false;
 
   // Email sending strategy:
   // 1. Check SMTP_HOST env var — if set, use nodemailer
@@ -39,7 +40,8 @@ const task: Task = async (payload, { logger }) => {
   if (smtpHost) {
     try {
       // Dynamic import to avoid requiring nodemailer in dev
-      const nodemailer = await import('nodemailer');
+      const nodemailerModuleName = 'nodemailer';
+      const nodemailer = await import(nodemailerModuleName);
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: Number(process.env.SMTP_PORT || 587),
@@ -63,23 +65,30 @@ const task: Task = async (payload, { logger }) => {
         </div>`,
       });
 
+      emailSent = true;
       logger.info(`Email sent to ${to}: ${subject}`);
     } catch (err: any) {
       logger.error(`Email send failed: ${err.message}`);
-      // Don't throw — mark as attempted anyway
     }
   } else {
     logger.info(`[DEV] Email would be sent to ${to}: ${subject}\n${body}`);
+    emailSent = true;
   }
 
-  // Mark notification as email_sent
+  // Persist notification email status with transaction-scoped tenant context.
   const client = await pool.connect();
   try {
-    await client.query(`SET LOCAL app.tenant_id = $1`, [tenantId]);
+    await client.query('BEGIN');
+    await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
+    await client.query(`SELECT set_config('app.user_id', $1, true)`, ['00000000-0000-0000-0000-000000000001']);
     await client.query(
-      `UPDATE esg.notifications SET email_sent = true, email_address = $1 WHERE id = $2 AND tenant_id = $3`,
-      [to, notificationId, tenantId]
+      `UPDATE esg.notifications SET email_sent = $1, email_address = $2 WHERE id = $3 AND tenant_id = $4`,
+      [emailSent, to, notificationId, tenantId]
     );
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
   } finally {
     client.release();
   }

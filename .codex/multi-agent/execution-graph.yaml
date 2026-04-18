@@ -1,0 +1,129 @@
+version: 1
+mode: deterministic_parallel
+
+phases:
+  - phase: 1
+    name: infrastructure-spine
+    objective: tenant isolation proven
+    lanes:
+      - lane: p1-backend-db-rls
+        owner: backend
+        depends_on: []
+        outputs:
+          - rls_validation_report
+          - migration_health_report
+      - lane: p1-devops-ci-infra
+        owner: devops
+        depends_on: []
+        outputs:
+          - ci_pipeline_report
+          - infra_boot_report
+      - lane: p1-frontend-shell
+        owner: frontend
+        depends_on: []
+        outputs:
+          - shell_baseline_report
+    gate: phase-1-gate
+
+  - phase: 2
+    name: data-engine
+    objective: upload approve recalc totals deterministic
+    lanes:
+      - lane: p2-backend-facts-recalc
+        owner: backend
+        depends_on: [p1-backend-db-rls]
+        outputs:
+          - facts_engine_report
+          - recalc_idempotency_report
+      - lane: p2-ai-ocr-mapping
+        owner: ai
+        depends_on: [p1-devops-ci-infra]
+        outputs:
+          - ai_guardrail_report
+      - lane: p2-frontend-data-hub
+        owner: frontend
+        depends_on: [p1-frontend-shell, p2-backend-facts-recalc]
+        outputs:
+          - data_hub_ux_report
+    gate: phase-2-gate
+
+  - phase: 3
+    name: compliance-engine
+    objective: deterministic evaluate findings resolve completeness
+    lanes:
+      - lane: p3-backend-compliance-api
+        owner: backend
+        depends_on: [p2-backend-facts-recalc]
+        outputs:
+          - compliance_api_report
+      - lane: p3-compliance-rule-catalog
+        owner: compliance
+        depends_on: [p1-backend-db-rls]
+        outputs:
+          - rule_catalog_report
+          - completeness_determinism_report
+      - lane: p3-frontend-gap-map
+        owner: frontend
+        depends_on: [p3-backend-compliance-api, p3-compliance-rule-catalog]
+        outputs:
+          - gap_map_ux_report
+    gate: phase-3-gate
+
+  - phase: 4
+    name: reporting-auditor
+    objective: exports lineage freeze consistency
+    lanes:
+      - lane: p4-reporting-builder
+        owner: reporting
+        depends_on: [p3-compliance-rule-catalog]
+        outputs:
+          - report_builder_report
+      - lane: p4-backend-freeze
+        owner: backend
+        depends_on: [p3-backend-compliance-api]
+        outputs:
+          - freeze_lifecycle_report
+      - lane: p4-frontend-reports-ui
+        owner: frontend
+        depends_on: [p4-reporting-builder, p4-backend-freeze]
+        outputs:
+          - reports_ui_report
+    gate: phase-4-gate
+
+  - phase: 5
+    name: executive-cockpit
+    objective: p95 and caching targets met
+    lanes:
+      - lane: p5-backend-kpi
+        owner: backend
+        depends_on: [p4-backend-freeze]
+        outputs:
+          - kpi_performance_report
+      - lane: p5-ai-brief
+        owner: ai
+        depends_on: [p2-ai-ocr-mapping]
+        outputs:
+          - briefing_cache_report
+      - lane: p5-frontend-dashboard
+        owner: frontend
+        depends_on: [p5-backend-kpi, p5-ai-brief]
+        outputs:
+          - executive_dashboard_report
+    gate: phase-5-gate
+
+transitions:
+  - from: 1
+    to: 2
+    requires_gate: phase-1-gate
+  - from: 2
+    to: 3
+    requires_gate: phase-2-gate
+  - from: 3
+    to: 4
+    requires_gate: phase-3-gate
+  - from: 4
+    to: 5
+    requires_gate: phase-4-gate
+  - from: 5
+    to: release
+    requires_gate: phase-5-gate

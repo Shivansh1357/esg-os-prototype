@@ -107,6 +107,37 @@ def anomaly_explain(body: AnomalyReq):
 
     historical = body.historicalValues or []
     mean, std = _compute_stats(historical)
+    period = f"{body.periodStart} to {body.periodEnd}" if body.periodStart else "current period"
+
+    if len(historical) < 2:
+        explanation = (
+            f"Not enough historical data to determine whether {body.metricCode} value of "
+            f"{body.currentValue:,.1f} {body.unit} for {body.entityName or 'this entity'} ({period}) "
+            "is anomalous."
+        )
+        suggestions = [
+            "Compare against at least two prior reporting periods before treating this as normal.",
+            f"Review the source document for {body.metricCode} before approval.",
+        ]
+        ms = round((time.time() - started) * 1000, 2)
+        log.info(
+            "anomaly.explain",
+            metric=body.metricCode,
+            z=0.0,
+            outlier=False,
+            severity="none",
+            baseline_points=len(historical),
+            ms=ms,
+        )
+        return AnomalyResp(
+            isOutlier=False,
+            severity="none",
+            zScore=0.0,
+            explanation=explanation,
+            suggestions=suggestions,
+            historicalMean=None,
+            historicalStd=None,
+        )
 
     if std > 0:
         z_score = round((body.currentValue - mean) / std, 2)
@@ -115,7 +146,6 @@ def anomaly_explain(body: AnomalyReq):
 
     is_outlier = abs(z_score) >= 3
     sev = _severity(z_score)
-    period = f"{body.periodStart} to {body.periodEnd}" if body.periodStart else "current period"
 
     explanation = _explain(
         body.metricCode, body.currentValue, body.unit,

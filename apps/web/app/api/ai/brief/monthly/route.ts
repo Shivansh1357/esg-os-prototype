@@ -1,19 +1,32 @@
 const AI_URL = process.env.NEXT_PUBLIC_AI_URL || 'http://localhost:8001'
+type BriefRequestBody = {
+  template?: unknown
+  section?: unknown
+  periodStart?: unknown
+  periodEnd?: unknown
+  kpis?: unknown
+  tone?: unknown
+}
 
 export async function POST(request: Request) {
+  let body: BriefRequestBody = {}
   try {
-    const body = await request.json()
+    body = (await request.json()) as BriefRequestBody
+  } catch {
+    body = {}
+  }
 
+  try {
     const upstream = await fetch(`${AI_URL}/narrative/section`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        template: body.template || 'BRSR',
-        section: body.section || 'EMISSIONS',
-        periodStart: body.periodStart || '',
-        periodEnd: body.periodEnd || '',
-        kpis: body.kpis || {},
-        tone: body.tone || 'neutral',
+        template: typeof body.template === 'string' ? body.template : 'BRSR',
+        section: typeof body.section === 'string' ? body.section : 'EMISSIONS',
+        periodStart: typeof body.periodStart === 'string' ? body.periodStart : '',
+        periodEnd: typeof body.periodEnd === 'string' ? body.periodEnd : '',
+        kpis: body.kpis && typeof body.kpis === 'object' ? body.kpis : {},
+        tone: typeof body.tone === 'string' ? body.tone : 'neutral',
       }),
     })
 
@@ -30,9 +43,8 @@ export async function POST(request: Request) {
     return Response.json({ bullets, text: data.text, citations: data.citations || [] })
   } catch {
     // Fallback: static bullets when AI service is unavailable
-    const body = await request.clone().json().catch(() => ({}))
-    const ps = body?.periodStart || '—'
-    const pe = body?.periodEnd || '—'
+    const ps = typeof body.periodStart === 'string' && body.periodStart ? body.periodStart : '—'
+    const pe = typeof body.periodEnd === 'string' && body.periodEnd ? body.periodEnd : '—'
 
     return Response.json({
       bullets: [

@@ -39,6 +39,7 @@ describe('compliance lifecycle e2e', () => {
     const user = '00000000-0000-0000-0000-00000000d444';
 
     await withCtx(tenant, user, async (c) => {
+      await c.query(`SELECT pg_advisory_xact_lock(hashtextextended('test:compliance_rules:BRSR_CORE', 0))`);
       await c.query(`UPDATE esg.compliance_rules SET active=false WHERE framework='BRSR_CORE'`);
       const metricRuleId = (
         await c.query(

@@ -37,6 +37,7 @@ describe('BRSR evaluate + resolve', () => {
     const user = '00000000-0000-0000-0000-00000000cdef';
 
     await withCtx(tenant, user, async (c) => {
+      await c.query(`SELECT pg_advisory_xact_lock(hashtextextended('test:compliance_rules:BRSR_CORE', 0))`);
       await c.query(`UPDATE esg.compliance_rules SET active=false WHERE framework='BRSR_CORE'`);
       const metricRuleId = (
         await c.query(
@@ -117,5 +118,4 @@ describe('BRSR evaluate + resolve', () => {
     });
   });
 });
-
 

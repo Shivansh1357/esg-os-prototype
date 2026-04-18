@@ -1,0 +1,232 @@
+version: 1
+mode: institutional
+policy: hard_gate_every_phase
+risk_model: hard_outer_gates_fast_inner_loops
+
+phases:
+  - id: 1
+    name: Infrastructure Spine
+    risk_budget: zero
+    allowed_change_types:
+      - stage-transition
+    blocked_paths: []
+    requires_orchestrator_for_transition: true
+
+  - id: 2
+    name: Data Engine
+    risk_budget: low
+    allowed_change_types:
+      - ui-only
+      - ai-tuning
+      - additive-backend
+      - stage-transition
+    blocked_paths:
+      - sql/deploy/03*.sql
+      - sql/revert/03*.sql
+      - sql/verify/03*.sql
+      - sql/deploy/04*.sql
+      - sql/revert/04*.sql
+      - sql/verify/04*.sql
+      - sql/deploy/05*.sql
+      - sql/revert/05*.sql
+      - sql/verify/05*.sql
+      - sql/deploy/07*.sql
+      - sql/revert/07*.sql
+      - sql/verify/07*.sql
+      - sql/deploy/09*.sql
+      - sql/revert/09*.sql
+      - sql/verify/09*.sql
+      - sql/deploy/10*.sql
+      - sql/revert/10*.sql
+      - sql/verify/10*.sql
+      - sql/deploy/11*.sql
+      - sql/revert/11*.sql
+      - sql/verify/11*.sql
+    requires_orchestrator_for_transition: true
+
+  - id: 3
+    name: Compliance Engine
+    risk_budget: very_low
+    allowed_change_types:
+      - additive-backend
+      - stage-transition
+    blocked_paths: []
+    requires_orchestrator_for_transition: true
+
+  - id: 4
+    name: Reporting and Freeze
+    risk_budget: minimal
+    allowed_change_types:
+      - additive-backend
+      - stage-transition
+    blocked_paths: []
+    requires_orchestrator_for_transition: true
+
+  - id: 5
+    name: Executive Cockpit
+    risk_budget: moderate
+    allowed_change_types:
+      - ui-only
+      - ai-tuning
+      - additive-backend
+      - stage-transition
+    blocked_paths: []
+    requires_orchestrator_for_transition: true
+
+progress:
+  current_phase: 2
+  completed_phases:
+    - 1
+  decisions:
+    - phase: 1
+      status: APPROVE
+      approver: orchestrator
+      timestamp: '2026-02-20T00:00:00Z'
+      evidence_refs:
+        - .codex/artifacts/gate-decisions/phase-1.json
+      exceptions: []
+
+stage_gates:
+  - phase: 1
+    gate_id: phase-1-gate
+    risk_budget: zero
+    objective: tenant isolation proven
+    checks:
+      - name: infra-up
+        command: pnpm infra:up
+      - name: db-refresh
+        command: pnpm db:refresh
+      - name: rls-suite
+        command: pnpm --filter @apps/api test -- rls.e2e.spec.ts
+      - name: web-build
+        command: pnpm --filter @apps/web build
+    thresholds:
+      - metric: rls_pass_rate
+        op: eq
+        value: 100
+      - metric: db_deploy_verify
+        op: eq
+        value: pass
+    approvers:
+      - orchestrator
+      - backend
+      - devops
+      - qa
+      - architecture
+      - security
+      - product-owner
+    block_on_failure: true
+
+  - phase: 2
+    gate_id: phase-2-gate
+    risk_budget: low
+    objective: upload approve recalc totals deterministic
+    checks:
+      - name: facts-recalc-tests
+        command: pnpm --filter @apps/api test -- facts.upsert.spec.ts recalc.e2e.spec.ts
+      - name: upload-approve-e2e
+        command: pnpm --filter @apps/web test:e2e -- tests/upload-approve.spec.ts
+      - name: ai-pytest
+        command: cd apps/ai && pytest -q
+    thresholds:
+      - metric: upload_approve_recalc_flow
+        op: eq
+        value: pass
+      - metric: ai_test_pass_rate
+        op: eq
+        value: 100
+    approvers:
+      - orchestrator
+      - backend
+      - frontend
+      - ai
+      - qa
+      - product-owner
+    block_on_failure: true
+
+  - phase: 3
+    gate_id: phase-3-gate
+    risk_budget: very_low
+    objective: deterministic compliance lifecycle
+    checks:
+      - name: compliance-api-tests
+        command: pnpm --filter @apps/api test -- compliance.spec.ts compliance.lifecycle.e2e.spec.ts
+      - name: governance-ui-tests
+        command: pnpm --filter @apps/web test:e2e -- tests/freeze-alignment.spec.ts tests/governance-roles.spec.ts
+    thresholds:
+      - metric: completeness_determinism
+        op: eq
+        value: pass
+      - metric: evidence_enforcement
+        op: eq
+        value: pass
+    approvers:
+      - orchestrator
+      - compliance
+      - backend
+      - frontend
+      - qa
+      - security
+      - product-owner
+    block_on_failure: true
+
+  - phase: 4
+    gate_id: phase-4-gate
+    risk_budget: minimal
+    objective: reporting lineage and freeze integrity
+    checks:
+      - name: reporting-api-tests
+        command: pnpm --filter @apps/api test -- reports.export.http.e2e.spec.ts report.export_payload.e2e.spec.ts
+      - name: reporting-ui-tests
+        command: pnpm --filter @apps/web test:e2e -- tests/reports-export.spec.ts tests/report-context-selector.spec.ts
+    thresholds:
+      - metric: export_integrity
+        op: eq
+        value: pass
+      - metric: lineage_visibility
+        op: eq
+        value: pass
+      - metric: freeze_consistency
+        op: eq
+        value: pass
+    approvers:
+      - orchestrator
+      - reporting
+      - backend
+      - frontend
+      - qa
+      - architecture
+      - product-owner
+    block_on_failure: true
+
+  - phase: 5
+    gate_id: phase-5-gate
+    risk_budget: moderate
+    objective: executive cockpit performance and confidence
+    checks:
+      - name: exec-backend-tests
+        command: pnpm --filter @apps/api test -- exec.http.e2e.spec.ts exec.performance.e2e.spec.ts suppliers.scope3.e2e.spec.ts
+      - name: exec-ui-tests
+        command: pnpm --filter @apps/web test:e2e -- tests/exec-cockpit.spec.ts tests/supplier-trend-differentiation.spec.ts tests/chart-states.spec.ts
+      - name: full-confidence
+        command: pnpm verify:confidence
+    thresholds:
+      - metric: exec_p95_seconds
+        op: lte
+        value: 2.0
+      - metric: brief_cache_status
+        op: eq
+        value: pass
+      - metric: confidence_suite
+        op: eq
+        value: pass
+    approvers:
+      - orchestrator
+      - backend
+      - frontend
+      - ai
+      - qa
+      - architecture
+      - security
+      - product-owner
+    block_on_failure: true

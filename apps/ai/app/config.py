@@ -1,5 +1,10 @@
-from pydantic import BaseSettings
 from typing import List, Optional
+
+try:
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+except ImportError:  # pragma: no cover - compatibility with pydantic v1
+    from pydantic import BaseSettings
+    SettingsConfigDict = None
 
 
 class Settings(BaseSettings):
@@ -25,16 +30,20 @@ class Settings(BaseSettings):
 
     # OCR config
     OCR_MAX_PAGES: int = 4
+    OCR_CONFIDENCE_HIGH: float = 0.8
+    OCR_CONFIDENCE_MEDIUM: float = 0.6
 
     # --- D3 options ---
     LLM_PROVIDER: str = "openai"  # "openai" | "bedrock"
     OPENAI_API_KEY: Optional[str] = None
     BEDROCK_REGION: Optional[str] = None
+    MAP_LOW_CONF_THRESHOLD: float = 0.55
 
-    class Config:
-        env_file = ".env"
+    if SettingsConfigDict is not None:
+        model_config = SettingsConfigDict(env_file=".env")
+    else:
+        class Config:
+            env_file = ".env"
 
 
 settings = Settings()
-
-

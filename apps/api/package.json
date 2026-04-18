@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development PORT=5051 ts-node-dev --respawn --transpile-only src/main.ts",
     "start": "cross-env PORT=5051 ts-node --transpile-only src/main.ts",
-    "test": "cross-env JWT_SECRET=test-jwt-secret jest"
+    "test": "cross-env JWT_SECRET=test-jwt-secret jest --runInBand"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.864.0",

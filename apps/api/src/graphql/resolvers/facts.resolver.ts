@@ -5,7 +5,7 @@ import { UpsertFactInput, Fact } from '../schema.gql';
 import { enqueueRecalc } from '../../queue/enqueue';
 import { getDefaultFactorSetId } from '../../db/factors';
 import { enforceRateLimit, requireRole } from '../../rbac/access';
-import { incMetric } from '../../observability/metrics';
+import { incMetric, observeMetric } from '../../observability/metrics';
 
 @Resolver()
 export class FactsResolver {
@@ -34,9 +34,12 @@ export class FactsResolver {
              (quality_flags->>'outlier')::bool AS outlier
       FROM esg.facts
       WHERE ${conds.join(' AND ')}
-      ORDER BY period_start DESC, metric_code
+      ORDER BY period_start DESC, metric_code ASC, entity_id ASC, id ASC
       LIMIT 500`;
+    const startedAt = Date.now();
     const res = await client.query(sql, params);
+    incMetric('list_facts_total');
+    observeMetric('list_facts_duration_ms', Date.now() - startedAt);
     return res.rows.map(r => ({
       id: r.id,
       entityId: r.entity_id,
@@ -102,5 +105,4 @@ export class FactsResolver {
     return true;
   }
 }
-
 

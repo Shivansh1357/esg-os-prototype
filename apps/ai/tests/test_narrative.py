@@ -1,4 +1,14 @@
-from app.routers.narrative import narrative_section, NarrativeReq, FactorSet
+from app.routers.narrative import FactorSet, NarrativeReq, narrative_section
+
+
+def _to_dict(resp):
+    if isinstance(resp, dict):
+        return resp
+    if hasattr(resp, "model_dump"):
+        return resp.model_dump()  # pydantic v2
+    if hasattr(resp, "dict"):
+        return resp.dict()  # pydantic v1
+    return {"text": getattr(resp, "text", ""), "citations": getattr(resp, "citations", [])}
 
 
 def test_narrative_basic():
@@ -15,14 +25,8 @@ def test_narrative_basic():
         },
         factorSet=FactorSet(code="IN-CEA-2024", version="1.0"),
     )
-    resp = narrative_section(req)  # type: ignore
+    resp = _to_dict(narrative_section(req))  # type: ignore
     text = resp["text"]
     assert "[FACTOR_VSN:" in text
     wc = len(text.split())
     assert 90 <= wc <= 200
-
-
-
-
-
-

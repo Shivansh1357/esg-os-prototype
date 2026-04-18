@@ -1,9 +1,17 @@
 const AI_URL = process.env.NEXT_PUBLIC_AI_URL || 'http://localhost:8001'
+type MapColumnsRequestBody = {
+  headers?: unknown
+}
 
 export async function POST(request: Request) {
+  let body: MapColumnsRequestBody = {}
   try {
-    const body = await request.json()
+    body = (await request.json()) as MapColumnsRequestBody
+  } catch {
+    body = {}
+  }
 
+  try {
     const upstream = await fetch(`${AI_URL}/map/columns`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -18,8 +26,9 @@ export async function POST(request: Request) {
     return Response.json(data)
   } catch {
     // Fallback: naive header matching when AI service is unavailable
-    const body = await request.clone().json().catch(() => ({}))
-    const headers = body?.headers ?? []
+    const headers = Array.isArray(body.headers)
+      ? body.headers.filter((header): header is string => typeof header === 'string')
+      : []
     const lc = (s: string) => String(s || '').toLowerCase()
 
     const mapping: Record<string, string> = {

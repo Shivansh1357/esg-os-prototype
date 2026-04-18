@@ -1,0 +1,212 @@
+version: 1
+policy_mode: hard_gated
+handoff_template: .codex/artifacts/phase-{phase}/{agent}/handoff.md
+agents:
+  - id: orchestrator
+    display_name: Orchestrator Agent
+    role: Program Director
+    owned_paths:
+      - .codex/multi-agent/**
+      - .codex/artifacts/**
+      - .codex/skills/**
+    skills:
+      - e2e-acceptance-validator
+    forbidden_actions:
+      - edit_product_code
+      - bypass_required_signoff
+    required_approvals: []
+    stage_gate_authority:
+      can_approve_phases: [1, 2, 3, 4, 5]
+      can_block: true
+
+  - id: backend
+    display_name: Backend Agent
+    role: Platform/Data API
+    owned_paths:
+      - apps/api/src/**
+      - sql/**
+      - jobs/worker/**
+    excluded_paths:
+      - apps/api/src/compliance/**
+      - apps/api/src/reports/**
+      - apps/api/src/auditor/**
+    skills:
+      - sql-migration-engineer
+      - graphql-contract-enforcer
+      - tenant-isolation-guardian
+      - worker-lifecycle-architect
+      - e2e-acceptance-validator
+    forbidden_actions:
+      - edit_apps_web
+      - edit_apps_ai
+    required_approvals:
+      - orchestrator
+      - qa
+
+  - id: frontend
+    display_name: Frontend Agent
+    role: UX Surface
+    owned_paths:
+      - apps/web/**
+    skills:
+      - frontend-system-designer
+      - graphql-contract-enforcer
+      - e2e-acceptance-validator
+    forbidden_actions:
+      - edit_api_runtime
+      - edit_sql
+      - edit_worker_runtime
+    required_approvals:
+      - orchestrator
+      - qa
+
+  - id: ai
+    display_name: AI Agent
+    role: Assistive Intelligence
+    owned_paths:
+      - apps/ai/**
+    skills:
+      - ai-guardrail-engineer
+      - e2e-acceptance-validator
+    forbidden_actions:
+      - direct_db_writes
+      - bypass_human_in_loop
+    required_approvals:
+      - orchestrator
+      - security
+      - qa
+
+  - id: compliance
+    display_name: Compliance Agent
+    role: Deterministic Rules
+    owned_paths:
+      - apps/api/src/compliance/**
+      - sql/deploy/03*.sql
+      - sql/deploy/04*.sql
+      - sql/deploy/09*.sql
+      - sql/revert/03*.sql
+      - sql/revert/04*.sql
+      - sql/revert/09*.sql
+      - sql/verify/03*.sql
+      - sql/verify/04*.sql
+      - sql/verify/09*.sql
+    skills:
+      - compliance-rule-engine-builder
+      - sql-migration-engineer
+      - tenant-isolation-guardian
+    forbidden_actions:
+      - ai_based_rule_verdicts
+      - edit_reporting_logic
+    required_approvals:
+      - orchestrator
+      - security
+      - qa
+
+  - id: reporting
+    display_name: Reporting Agent
+    role: Reporting/Auditor Engine
+    owned_paths:
+      - apps/api/src/reports/**
+      - apps/api/src/auditor/**
+      - sql/deploy/05*.sql
+      - sql/deploy/07*.sql
+      - sql/deploy/10*.sql
+      - sql/deploy/11*.sql
+      - sql/revert/05*.sql
+      - sql/revert/07*.sql
+      - sql/revert/10*.sql
+      - sql/revert/11*.sql
+      - sql/verify/05*.sql
+      - sql/verify/07*.sql
+      - sql/verify/10*.sql
+      - sql/verify/11*.sql
+    skills:
+      - report-generation-engineer
+      - sql-migration-engineer
+      - e2e-acceptance-validator
+    forbidden_actions:
+      - alter_compliance_scoring
+    required_approvals:
+      - orchestrator
+      - qa
+      - architecture
+
+  - id: devops
+    display_name: DevOps Agent
+    role: Runtime/CI
+    owned_paths:
+      - docker/**
+      - .github/workflows/**
+    skills:
+      - worker-lifecycle-architect
+      - tenant-isolation-guardian
+      - governance-enforcement-engine
+      - e2e-acceptance-validator
+    forbidden_actions:
+      - modify_business_logic
+    required_approvals:
+      - orchestrator
+      - security
+
+  - id: qa
+    display_name: QA Agent
+    role: Review + Validation
+    owned_paths:
+      - .codex/artifacts/**
+      - docs/**
+      - apps/web/tests/**
+      - apps/api/test/**
+    skills:
+      - quality-gate-governor
+      - e2e-acceptance-validator
+    forbidden_actions:
+      - ship_feature_code_without_owner
+      - waive_failed_mandatory_checks
+    required_approvals:
+      - orchestrator
+
+  - id: product-owner
+    display_name: Product Owner Agent
+    role: Refinement + Scope Control
+    owned_paths:
+      - docs/**
+      - PRD.md
+      - Progress.md
+    skills:
+      - product-refinement-operator
+    forbidden_actions:
+      - modify_runtime_code
+    required_approvals:
+      - orchestrator
+
+  - id: architecture
+    display_name: Architecture Reviewer Agent
+    role: Contract and Design Integrity
+    owned_paths:
+      - architecture.md
+      - AGENTS.md
+      - .codex/multi-agent/contracts.yaml
+      - docs/**
+    skills:
+      - architecture-contract-reviewer
+      - graphql-contract-enforcer
+    forbidden_actions:
+      - bypass_contract_freeze
+    required_approvals:
+      - orchestrator
+
+  - id: security
+    display_name: Security Reviewer Agent
+    role: Security and Isolation Review
+    owned_paths:
+      - docs/**
+      - apps/api/src/auth/**
+      - apps/api/src/tenancy/**
+      - apps/api/src/rbac/**
+    skills:
+      - security-policy-guardian
+      - tenant-isolation-guardian
+    forbidden_actions:
+      - approve_tenant_data_risk
+    required_approvals:
+      - orchestrator

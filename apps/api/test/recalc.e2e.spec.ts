@@ -60,10 +60,23 @@ describe('D3 recalc acceptance', () => {
     periodEnd: string;
     factorSetId: string;
   }) {
+    return runWorkerRecalcWithContext(payload.tenantId, payload);
+  }
+
+  async function runWorkerRecalcWithContext(
+    contextTenantId: string,
+    payload: {
+      tenantId: string;
+      entityId: string;
+      periodStart: string;
+      periodEnd: string;
+      factorSetId: string;
+    }
+  ) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [payload.tenantId]);
+      await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [contextTenantId]);
       await client.query(`SELECT set_config('app.user_id', $1, true)`, ['00000000-0000-0000-0000-000000000001']);
       await client.query(
         `SELECT (esg.recalc_emissions($1,$2,$3,$4,$5)).id AS id`,
@@ -127,5 +140,55 @@ describe('D3 recalc acceptance', () => {
     });
     expect(second.rowCount).toBe(1);
     expect(Number(second.rows[0].calc_version)).toBe(2);
+  });
+
+  it('rejects worker recalc when tenant context and payload tenant mismatch', async () => {
+    const periodStart = '2025-07-01';
+    const periodEnd = '2025-09-30';
+    const user = '00000000-0000-0000-0000-00000000d3e2';
+    const client = await pool.connect();
+    let alt: { tenantId: string; entityId: string } | null = null;
+    try {
+      await client.query('BEGIN');
+      const tenantId = (await client.query(`INSERT INTO esg.tenants(name) VALUES('T-D3-E2E-ALT') RETURNING id`)).rows[0].id as string;
+      const entityId = (
+        await client.query(
+          `INSERT INTO esg.entities(tenant_id,name,etype) VALUES($1,'ALT-HQ','ORG') RETURNING id`,
+          [tenantId]
+        )
+      ).rows[0].id as string;
+      await client.query('COMMIT');
+      alt = { tenantId, entityId };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+    expect(alt).toBeTruthy();
+
+    await expect(
+      runWorkerRecalcWithContext(tenant, {
+        tenantId: alt!.tenantId,
+        entityId: alt!.entityId,
+        periodStart,
+        periodEnd,
+        factorSetId,
+      })
+    ).rejects.toThrow(/tenant context mismatch/i);
+
+    const totals = await withCtx(alt!.tenantId, user, async (c) => {
+      return c.query(
+        `SELECT count(*)::int AS n
+           FROM esg.emission_totals
+          WHERE tenant_id = $1
+            AND entity_id = $2
+            AND period_start = $3
+            AND period_end = $4
+            AND factor_set_id = $5`,
+        [alt!.tenantId, alt!.entityId, periodStart, periodEnd, factorSetId]
+      );
+    });
+    expect(Number(totals.rows[0].n)).toBe(0);
   });
 });
