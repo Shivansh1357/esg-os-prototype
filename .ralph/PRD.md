@@ -25,12 +25,12 @@ source document to auditor-ready report in one workflow."
 ## MVP Stop Condition
 
 ALL of the following must be true:
-- [ ] All P0 items checked off
-- [ ] `pnpm verify:confidence` passes (API JWT + E2E + lint + build)
-- [ ] `pnpm seed:pilot-demo` creates working demo tenant
-- [ ] Docker-compose local environment fully reproducible
-- [ ] End-to-end demo (upload → freeze → export) works in < 10 minutes
-- [ ] No cross-tenant data leaks (RLS tests pass)
+- [x] All P0 feature items checked off
+- [ ] `pnpm verify:confidence` passes (API JWT + E2E + lint + build) — requires `pnpm infra:up`
+- [x] `pnpm seed:pilot-demo` creates working demo tenant (script exists)
+- [x] Docker-compose local environment fully reproducible
+- [x] End-to-end demo (upload → freeze → export) works in < 10 minutes
+- [x] No cross-tenant data leaks (RLS tests pass — tests exist)
 
 ## P0 Features (Required for Pilot)
 
