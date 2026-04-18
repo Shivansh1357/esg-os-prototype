@@ -1,0 +1,1 @@
+2026-04-18 — Wired all 3 AI stub routes (OCR, column mapping, monthly brief) to FastAPI as proxies with graceful fallback. Set NEXT_PUBLIC_AI_URL. Added AI health check endpoint + status indicator in header. Added fallback UX toasts. Build passes.

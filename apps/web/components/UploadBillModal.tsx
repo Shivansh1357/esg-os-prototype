@@ -19,7 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type MapAlt = { header: string; score: number }
-type MapResp = { mapping: Record<string, string>; confidence: number; alternatives?: Record<string, MapAlt[]>; warnings?: string[] }
+type MapResp = { mapping: Record<string, string>; confidence: number; alternatives?: Record<string, MapAlt[]>; warnings?: string[]; confidence_band?: string; fallback_used?: boolean }
 
 const UPSERT = `
 mutation U($input: UpsertFactInput!){ upsertFact(input:$input) }
@@ -126,11 +126,15 @@ export default function UploadBillModal({ onUploaded, ...btn }: Props) {
         const resp = await postAI<MapResp>('/map/columns', { headers: Object.keys(rows[0] ?? {}) })
         setMapResp(resp)
         setSelected(resp.mapping as any)
+        if (resp.confidence_band === 'low' || resp.fallback_used) {
+          toast.warning('AI confidence is low — please review mapping carefully.')
+        }
       } catch {
         try {
           const resp = await postJSON<MapResp>('/ai/map/columns', { headers: Object.keys(rows[0] ?? {}) } as any)
           setMapResp(resp)
           setSelected(resp.mapping as any)
+          toast.warning('AI service unavailable — using basic header matching. Review mapping carefully.')
         } catch {
           setMapResp(null)
         }

@@ -1,4 +1,5 @@
 export { default as ActionBar } from "./action-bar"
+export { default as AiStatusIndicator } from "./ai-status-indicator"
 export { default as DataTableShell } from "./data-table-shell"
 export { default as EmptyState } from "./empty-state"
 export { default as FilterBar } from "./filter-bar"

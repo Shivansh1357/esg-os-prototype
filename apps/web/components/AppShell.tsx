@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { ChevronRight, Menu, Search } from "lucide-react"
 import AppNav, { NAV_ITEMS } from "@/components/AppNav"
 import ThemeToggle from "@/components/theme-toggle"
+import { AiStatusIndicator } from "@/components/product"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -81,7 +82,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <AiStatusIndicator />
                 <ThemeToggle />
               </div>
             </div>
