@@ -96,7 +96,7 @@ ALL of the following must be true:
 ## P1 Features (Nice-to-Have, Post-Pilot)
 
 ### Enhanced AI Capabilities
-- [ ] AI-powered anomaly detection on uploaded data (flag outliers with explanation)
+- [x] AI-powered anomaly detection on uploaded data (flag outliers with explanation)
 - [ ] Auto-suggest remediation actions for compliance gaps
 - [ ] Multi-language OCR support (Hindi + English utility bills)
 - [ ] AI-generated executive narrative with trend attribution

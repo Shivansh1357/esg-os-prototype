@@ -6,7 +6,7 @@ from slowapi.util import get_remote_address
 from app.config import settings
 from app.logging import log
 from app.routers import health, ocr, narrative
-from app.routers import map_columns, compliance
+from app.routers import map_columns, compliance, anomaly
 
 
 limiter = Limiter(key_func=get_remote_address)
@@ -40,6 +40,7 @@ app.include_router(ocr.router)
 app.include_router(narrative.router)
 app.include_router(map_columns.router)
 app.include_router(compliance.router)
+app.include_router(anomaly.router)
 
 
 @app.get("/")
