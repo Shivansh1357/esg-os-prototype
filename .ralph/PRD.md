@@ -46,7 +46,7 @@ ALL of the following must be true:
 - [x] Add BRSR Core KPI mappings (9 mandatory KPIs per SEBI circular)
 - [x] Add compliance rule explanations with evidence linking for each principle
 - [x] Add BRSR section-to-evidence mapping (which evidence satisfies which disclosure)
-- [ ] Generate BRSR-formatted export template (matching SEBI prescribed format)
+- [x] Generate BRSR-formatted export template (matching SEBI prescribed format)
 
 ### Competitive Differentiator: Assurance Readiness
 - [x] Verify freeze mechanism prevents all mutations on frozen periods
@@ -73,10 +73,10 @@ ALL of the following must be true:
 - [ ] Verify snapshot mode shows frozen report data
 
 ### Export & Reporting
-- [ ] Verify PDF export generates correctly formatted report
-- [ ] Verify Excel export includes all required sheets
-- [ ] Verify JSON export is machine-readable and complete
-- [ ] Add BRSR-specific export format (per SEBI template structure)
+- [x] Verify PDF export generates correctly formatted report
+- [x] Verify Excel export includes all required sheets
+- [x] Verify JSON export is machine-readable and complete
+- [x] Add BRSR-specific export format (per SEBI template structure)
 
 ### Testing & Quality
 - [ ] All existing E2E tests pass

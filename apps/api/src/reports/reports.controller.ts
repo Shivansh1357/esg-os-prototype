@@ -232,9 +232,9 @@ export class ReportsController {
   }
 
   @Post('/reports/:id/export')
-  async export(@Param('id') id: string, @Query('format') format: 'pdf'|'xlsx'|'json', @Req() req: Request): Promise<ExportResponse> {
+  async export(@Param('id') id: string, @Query('format') format: 'pdf'|'xlsx'|'json'|'brsr', @Req() req: Request): Promise<ExportResponse> {
     requireRole('ADMIN', 'MEMBER', 'AUDITOR');
-    if (!['pdf','xlsx','json'].includes(format)) { throw new Error('format must be pdf|xlsx|json'); }
+    if (!['pdf','xlsx','json','brsr'].includes(format)) { throw new Error('format must be pdf|xlsx|json|brsr'); }
     const client = pgClientFrom(req);
 
     const lockKey1 = 42;
@@ -254,7 +254,8 @@ export class ReportsController {
       const rpt = payload.report;
 
       const ts = new Date().toISOString().replace(/[:.]/g,'-');
-      const key = `reports/${id}/${ts}.${format}`;
+      const ext = format === 'brsr' ? 'xlsx' : format;
+      const key = `reports/${id}/${ts}.${ext}`;
       const bucket = process.env.S3_BUCKET || 'mock-bucket';
       const hasS3 =
         !!process.env.S3_BUCKET &&
@@ -263,7 +264,33 @@ export class ReportsController {
         !!process.env.S3_SECRET_KEY;
 
       let body: Buffer;
-      if (format === 'xlsx') {
+      if (format === 'brsr') {
+        // Fetch detailed compliance findings for BRSR report
+        const findingsResult = await client.query(
+          `SELECT r.code, r.title, r.principle, r.brsr_section, r.description, r.category,
+                  r.requires_evidence, r.metric_code,
+                  f.status::text AS status, f.reason, f.evidence_url, f.severity
+             FROM esg.compliance_findings f
+             JOIN esg.compliance_rules r ON r.id = f.rule_id
+            WHERE f.tenant_id = app.current_tenant()
+              AND f.period_start = $1 AND f.period_end = $2
+              AND r.framework = 'BRSR_CORE'
+            ORDER BY r.principle, r.code`,
+          [rpt.periodStart, rpt.periodEnd]
+        );
+        body = await buildBrsrWorkbookBuffer({
+          reportName: rpt.name,
+          template: rpt.template,
+          periodStart: rpt.periodStart,
+          periodEnd: rpt.periodEnd,
+          totals: payload.totals,
+          compliance: payload.compliance,
+          factor: payload.factorSet,
+          calcVersion: payload.calcVersion,
+          completenessPercent: payload.completenessPercent,
+          findings: findingsResult.rows,
+        });
+      } else if (format === 'xlsx') {
         body = await buildWorkbookBuffer({
           reportName: rpt.name,
           template: rpt.template,
@@ -300,7 +327,7 @@ export class ReportsController {
           Bucket: bucket,
           Key: key,
           Body: body,
-          ContentType: format === 'pdf' ? 'application/pdf' : format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/json',
+          ContentType: format === 'pdf' ? 'application/pdf' : (format === 'xlsx' || format === 'brsr') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/json',
         }));
         const { GetObjectCommand } = await import('@aws-sdk/client-s3');
         getUrl = await getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 3600 });
@@ -309,7 +336,7 @@ export class ReportsController {
       await client.query(
         `INSERT INTO esg.report_artifacts (tenant_id, report_id, format, s3_key, bytes)
          VALUES (app.current_tenant(), $1, $2, $3, $4)`,
-        [id, format === 'json' ? 'xlsx' : format, `s3://${bucket}/${key}`, body.length]
+        [id, format === 'json' ? 'json' : format === 'brsr' ? 'xlsx' : format, `s3://${bucket}/${key}`, body.length]
       );
 
       return { url: getUrl, mode: payload.mode === 'snapshot' ? 'snapshot' : 'live' };
@@ -361,3 +388,107 @@ async function buildPdfBuffer(args: any): Promise<Buffer> {
 }
 
 function escapeHtml(s: string){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]!)); }
+
+const PRINCIPLE_LABELS: Record<string, string> = {
+  P1: 'Principle 1 — Ethics, Transparency & Accountability',
+  P2: 'Principle 2 — Sustainable & Safe Products/Services',
+  P3: 'Principle 3 — Employee Well-being',
+  P4: 'Principle 4 — Stakeholder Engagement',
+  P5: 'Principle 5 — Human Rights',
+  P6: 'Principle 6 — Environmental Protection',
+  P7: 'Principle 7 — Responsible Policy Advocacy',
+  P8: 'Principle 8 — Inclusive Growth',
+  P9: 'Principle 9 — Consumer Responsibility',
+};
+
+async function buildBrsrWorkbookBuffer(args: any): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+
+  // Sheet 1: Cover
+  const cover = wb.addWorksheet('BRSR Cover');
+  cover.columns = [{ width: 30 }, { width: 50 }];
+  cover.addRow(['BRSR Report', args.reportName]).font = { bold: true, size: 14 };
+  cover.addRow([]);
+  cover.addRow(['Template', args.template]);
+  cover.addRow(['Period', `${iso(args.periodStart)} to ${iso(args.periodEnd)}`]);
+  cover.addRow(['Factor Set', args.factor ? `${args.factor.code} v${args.factor.version}` : 'N/A']);
+  cover.addRow(['Calc Version', args.calcVersion ?? 'N/A']);
+  cover.addRow(['Completeness', `${args.completenessPercent ?? 0}%`]);
+  cover.addRow([]);
+  cover.addRow(['Section A: General Disclosures']).font = { bold: true };
+  cover.addRow(['Report generated per SEBI BRSR format']);
+  cover.addRow(['Framework: BRSR_CORE (NGRBC Principles P1-P9)']);
+
+  // Sheet 2: Emissions Summary (Section A.III)
+  const emissions = wb.addWorksheet('Section A.III - Emissions');
+  emissions.columns = [{ width: 35 }, { width: 20 }, { width: 15 }];
+  emissions.addRow(['GHG Emissions Summary', '', '']).font = { bold: true };
+  emissions.addRow(['Metric', 'Value (kgCO2e)', 'Notes']);
+  emissions.addRow(['Scope 1 (Direct)', Number(args.totals?.s1 || 0), 'Fuel combustion, process emissions']);
+  emissions.addRow(['Scope 2 (Location-based)', Number(args.totals?.s2l || 0), 'Purchased electricity (grid average)']);
+  emissions.addRow(['Scope 2 (Market-based)', Number(args.totals?.s2m || 0), 'Purchased electricity (contractual)']);
+  emissions.addRow(['Scope 3 (Value Chain)', Number(args.totals?.s3 || 0), 'Upstream + downstream indirect']);
+  emissions.addRow([]);
+  emissions.addRow(['Total Scope 1+2 (location)', Number((args.totals?.s1 || 0) + (args.totals?.s2l || 0)), '']);
+
+  // Sheet 3: Compliance by Principle (Section B)
+  const compliance = wb.addWorksheet('Section B - Principles');
+  compliance.columns = [{ width: 8 }, { width: 40 }, { width: 15 }, { width: 12 }, { width: 10 }, { width: 50 }, { width: 30 }];
+  compliance.addRow(['NGRBC Principle Compliance Status', '', '', '', '', '', '']).font = { bold: true };
+  compliance.addRow(['Principle', 'Rule Title', 'Section', 'Category', 'Status', 'Reason', 'Evidence']);
+
+  const findings = args.findings ?? [];
+  let currentPrinciple = '';
+
+  for (const f of findings) {
+    if (f.principle !== currentPrinciple) {
+      currentPrinciple = f.principle;
+      compliance.addRow([]);
+      const pRow = compliance.addRow([PRINCIPLE_LABELS[currentPrinciple] || currentPrinciple, '', '', '', '', '', '']);
+      pRow.font = { bold: true };
+    }
+    compliance.addRow([
+      f.principle || '—',
+      f.title || f.code,
+      f.brsr_section || '—',
+      f.category || '—',
+      f.status,
+      f.reason || '—',
+      f.evidence_url || '—',
+    ]);
+  }
+
+  // Sheet 4: Compliance Summary
+  const summary = wb.addWorksheet('Compliance Summary');
+  summary.columns = [{ width: 20 }, { width: 15 }];
+  summary.addRow(['Compliance Overview', '']).font = { bold: true };
+  summary.addRow(['Status', 'Count']);
+  summary.addRow(['PASS', Number(args.compliance?.pass || 0)]);
+  summary.addRow(['FAIL', Number(args.compliance?.fail || 0)]);
+  summary.addRow(['RISK', Number(args.compliance?.risk || 0)]);
+  summary.addRow(['Total', Number(args.compliance?.total || 0)]);
+  summary.addRow([]);
+
+  // Principle-level summary
+  const principleGroups: Record<string, { pass: number; total: number }> = {};
+  for (const f of findings) {
+    const p = f.principle || 'Other';
+    if (!principleGroups[p]) principleGroups[p] = { pass: 0, total: 0 };
+    principleGroups[p].total++;
+    if (f.status === 'PASS') principleGroups[p].pass++;
+  }
+  summary.addRow(['Principle-wise Completeness', '']).font = { bold: true };
+  summary.addRow(['Principle', 'Completeness']);
+  for (const [p, s] of Object.entries(principleGroups).sort(([a],[b]) => a.localeCompare(b))) {
+    summary.addRow([PRINCIPLE_LABELS[p] || p, `${s.pass}/${s.total} (${s.total ? Math.round((s.pass / s.total) * 100) : 0}%)`]);
+  }
+
+  // Sheet 5: Footnotes
+  const notes = wb.addWorksheet('Footnotes');
+  notes.addRow([footnotesText({ template: args.template, factor: args.factor, periodStart: args.periodStart, periodEnd: args.periodEnd })]);
+  notes.addRow([`BRSR Report generated on ${new Date().toISOString()}`]);
+  notes.addRow(['This report follows the SEBI prescribed BRSR format per Circular SEBI/HO/CFD/CMD-2/P/CIR/2021/562']);
+
+  const b = await wb.xlsx.writeBuffer();
+  return Buffer.from(b as ArrayBuffer);
+}

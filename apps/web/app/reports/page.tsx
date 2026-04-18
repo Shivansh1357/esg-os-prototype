@@ -40,7 +40,7 @@ mutation F($reportId:String!){
   freezeReport(reportId:$reportId)
 }`
 
-type Artifact = { format: 'pdf' | 'xlsx' | 'json'; url: string; mode: 'live' | 'snapshot' }
+type Artifact = { format: 'pdf' | 'xlsx' | 'json' | 'brsr' | 'zip'; url: string; mode: 'live' | 'snapshot' }
 type AccessOut = { url: string; expiresAt: string }
 type ExportOut = { url: string; mode: 'live' | 'snapshot' }
 
@@ -49,7 +49,7 @@ export default function ReportsPage() {
   const { reportId, setReportId } = useReportContext()
   const [name, setName] = useState<string>(() => `BRSR Draft - ${new Date().toISOString().slice(0, 10)}`)
   const [template, setTemplate] = useState<'BRSR'>('BRSR')
-  const [exporting, setExporting] = useState<'pdf' | 'xlsx' | 'json' | null>(null)
+  const [exporting, setExporting] = useState<'pdf' | 'xlsx' | 'json' | 'brsr' | null>(null)
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [msg, setMsg] = useState<string | null>(null)
   const [auditor, setAuditor] = useState<{ token?: string; url?: string; expiresAt?: string } | null>(null)
@@ -94,7 +94,7 @@ export default function ReportsPage() {
     onError: (e: any) => setMsg(e?.message || 'Failed to create report')
   })
 
-  async function exportReport(fmt: 'pdf' | 'xlsx' | 'json') {
+  async function exportReport(fmt: 'pdf' | 'xlsx' | 'json' | 'brsr') {
     if (!reportId) return
     setExporting(fmt)
     setMsg(null)
@@ -331,6 +331,14 @@ export default function ReportsPage() {
                   title={!canExport ? 'Auditors can export frozen reports only.' : ''}
                 >
                   Export JSON
+                </Button>
+                <Button
+                  data-test="export-brsr"
+                  onClick={() => exportReport('brsr')}
+                  disabled={exporting === 'brsr' || !canExport}
+                  title={!canExport ? 'Auditors can export frozen reports only.' : ''}
+                >
+                  BRSR Report
                 </Button>
               </>
             )}
