@@ -56,6 +56,7 @@ export default function ReportsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerData, setDrawerData] = useState<any | null>(null)
   const [assuring, setAssuring] = useState(false)
+  const [auditPacking, setAuditPacking] = useState(false)
   const [freezing, setFreezing] = useState(false)
   const onboarding = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('onboarding') === '1' : false
   const onboardingStep = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('step') : null
@@ -174,6 +175,33 @@ export default function ReportsPage() {
       setMsg(e?.message || 'Assurance export failed')
     } finally {
       setAssuring(false)
+    }
+  }
+
+  async function exportAuditPack() {
+    if (!reportId) return
+    setAuditPacking(true)
+    setMsg(null)
+    try {
+      const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reports/${reportId}/audit-pack`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(process.env.NEXT_PUBLIC_AUTH_TOKEN ? { Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}` } : {}),
+          'x-tenant-id': process.env.NEXT_PUBLIC_TENANT_ID!,
+          'x-user-id': process.env.NEXT_PUBLIC_USER_ID!,
+          'x-role': role,
+        },
+        body: JSON.stringify({})
+      })
+      if (!r.ok) throw new Error(await r.text())
+      const j = (await r.json()) as ExportOut
+      setArtifacts((a) => [{ format: 'zip' as any, url: j.url, mode: j.mode }, ...a])
+      setMsg(`Audit pack exported (${j.mode}).`)
+    } catch (e: any) {
+      setMsg(e?.message || 'Audit pack export failed')
+    } finally {
+      setAuditPacking(false)
     }
   }
 
@@ -333,6 +361,7 @@ export default function ReportsPage() {
               <Button data-test="auditor-generate" variant="outline" onClick={generateAuditorLink}>Generate access link</Button>
               <Button data-test="lineage-open" variant="outline" onClick={openLineage} disabled={!auditor?.token}>View lineage</Button>
               <Button data-test="assurance-export" variant="outline" onClick={exportAssurance} disabled={!auditor?.token || assuring}>{assuring ? 'Exporting...' : 'Assurance worksheet'}</Button>
+              <Button data-test="audit-pack-export" variant="outline" onClick={exportAuditPack} disabled={auditPacking || !canExport}>{auditPacking ? 'Packing...' : 'Audit Pack (ZIP)'}</Button>
               {isAdmin && (
                 <Button
                   data-test="freeze-report"

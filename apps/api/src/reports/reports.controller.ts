@@ -5,6 +5,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as ExcelJS from 'exceljs';
 import puppeteer from 'puppeteer';
+import * as archiver from 'archiver';
 import { pgClientFrom } from '../db/reqpg';
 import { currentRole, requireRole } from '../rbac/access';
 
@@ -116,6 +117,118 @@ export class ReportsController {
       frozenAt: row.frozen_at ? new Date(row.frozen_at).toISOString() : null,
       complianceSnapshot: row.compliance_snapshot ?? null
     };
+  }
+
+  @Post('/reports/:id/audit-pack')
+  async auditPack(@Param('id') id: string, @Req() req: Request): Promise<ExportResponse> {
+    requireRole('ADMIN', 'MEMBER', 'AUDITOR');
+    const client = pgClientFrom(req);
+
+    const lockKey1 = 43;
+    const lockKey2 = Math.abs(crypto.createHash('sha1').update(id).digest().readInt32BE(0));
+    await client.query(`SELECT pg_advisory_lock($1,$2)`, [lockKey1, lockKey2]);
+
+    try {
+      const payloadResult = await client.query(
+        `SELECT esg.get_report_export_payload(app.current_tenant(), $1) AS payload`, [id]
+      );
+      const payload = payloadResult.rows[0]?.payload;
+      if (!payload) throw new Error('report not found');
+      if (currentRole() === 'AUDITOR' && payload.mode !== 'snapshot') {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Insufficient permissions' });
+      }
+
+      // Fetch audit events for the period
+      const eventsResult = await client.query(
+        `SELECT action, entity_type, entity_id, payload AS data, created_at
+           FROM esg.facts_audit
+          WHERE tenant_id = app.current_tenant()
+            AND created_at >= $1::date AND created_at <= ($2::date + interval '1 day')
+          ORDER BY created_at DESC LIMIT 500`,
+        [payload.report.periodStart, payload.report.periodEnd]
+      );
+
+      const rpt = payload.report;
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const key = `audit-packs/${id}/${ts}.zip`;
+      const bucket = process.env.S3_BUCKET || 'mock-bucket';
+      const hasS3 = !!process.env.S3_BUCKET && !!process.env.S3_ENDPOINT && !!process.env.S3_ACCESS_KEY && !!process.env.S3_SECRET_KEY;
+
+      // Build ZIP with archiver
+      const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
+        const chunks: Buffer[] = [];
+        const archive = (archiver as any).default ? (archiver as any).default('zip', { zlib: { level: 9 } }) : (archiver as any)('zip', { zlib: { level: 9 } });
+        archive.on('data', (chunk: Buffer) => chunks.push(chunk));
+        archive.on('end', () => resolve(Buffer.concat(chunks)));
+        archive.on('error', reject);
+
+        // 1. Report summary (JSON)
+        archive.append(JSON.stringify({
+          report: rpt,
+          factorSet: payload.factorSet,
+          calcVersion: payload.calcVersion,
+          completenessPercent: payload.completenessPercent,
+          totals: payload.totals,
+          compliance: payload.compliance,
+          mode: payload.mode,
+          generatedAt: new Date().toISOString(),
+        }, null, 2), { name: 'report-summary.json' });
+
+        // 2. Compliance findings
+        archive.append(JSON.stringify(payload.complianceFindings ?? [], null, 2), { name: 'compliance-findings.json' });
+
+        // 3. Audit trail events
+        archive.append(JSON.stringify(eventsResult.rows ?? [], null, 2), { name: 'audit-trail.json' });
+
+        // 4. Full export payload (for machine consumption)
+        archive.append(JSON.stringify(payload, null, 2), { name: 'full-payload.json' });
+
+        // 5. Assurance cover sheet (text)
+        const cover = [
+          `AUDIT PACK — ${rpt.name}`,
+          `Template: ${rpt.template}`,
+          `Period: ${rpt.periodStart} to ${rpt.periodEnd}`,
+          `Frozen: ${rpt.isLocked ? 'YES' : 'NO'}${rpt.frozenAt ? ` (${rpt.frozenAt})` : ''}`,
+          `Factor Set: ${payload.factorSet?.code ?? 'N/A'} v${payload.factorSet?.version ?? 'N/A'}`,
+          `Calc Version: ${payload.calcVersion ?? 'N/A'}`,
+          `Completeness: ${payload.completenessPercent ?? 0}%`,
+          ``,
+          `Emissions (kgCO2e):`,
+          `  Scope 1: ${payload.totals?.s1 ?? 0}`,
+          `  Scope 2 (location): ${payload.totals?.s2l ?? 0}`,
+          `  Scope 2 (market): ${payload.totals?.s2m ?? 0}`,
+          `  Scope 3: ${payload.totals?.s3 ?? 0}`,
+          ``,
+          `Compliance: ${payload.compliance?.pass ?? 0} PASS / ${payload.compliance?.fail ?? 0} FAIL / ${payload.compliance?.risk ?? 0} RISK`,
+          `Audit Events: ${eventsResult.rows.length}`,
+          ``,
+          `Generated: ${new Date().toISOString()}`,
+          `Mode: ${payload.mode}`,
+        ].join('\n');
+        archive.append(cover, { name: 'COVER.txt' });
+
+        archive.finalize();
+      });
+
+      let getUrl = `mock://audit-packs/${id}/${ts}.zip`;
+      if (hasS3) {
+        await s3.send(new PutObjectCommand({
+          Bucket: bucket, Key: key, Body: zipBuffer, ContentType: 'application/zip',
+        }));
+        const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+        getUrl = await getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 3600 });
+      }
+
+      await client.query(
+        `INSERT INTO esg.report_artifacts (tenant_id, report_id, format, s3_key, bytes)
+         VALUES (app.current_tenant(), $1, 'zip', $2, $3)`,
+        [id, `s3://${bucket}/${key}`, zipBuffer.length]
+      );
+
+      return { url: getUrl, mode: payload.mode === 'snapshot' ? 'snapshot' : 'live' };
+    } finally {
+      await client.query(`SELECT pg_advisory_unlock($1,$2)`, [lockKey1, lockKey2]);
+    }
   }
 
   @Post('/reports/:id/export')

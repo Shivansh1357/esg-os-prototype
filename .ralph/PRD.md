@@ -49,10 +49,10 @@ ALL of the following must be true:
 - [ ] Generate BRSR-formatted export template (matching SEBI prescribed format)
 
 ### Competitive Differentiator: Assurance Readiness
-- [ ] Verify freeze mechanism prevents all mutations on frozen periods
-- [ ] Verify auditor token generation produces working read-only access
-- [ ] Add exportable audit pack (lineage + evidence + calculations in one ZIP)
-- [ ] Add assurance worksheet export (pre-filled for auditor review)
+- [x] Verify freeze mechanism prevents all mutations on frozen periods
+- [x] Verify auditor token generation produces working read-only access
+- [x] Add exportable audit pack (lineage + evidence + calculations in one ZIP)
+- [x] Add assurance worksheet export (pre-filled for auditor review)
 
 ### Data Pipeline Hardening
 - [ ] Verify upload → map → approve → recalc pipeline works end-to-end
