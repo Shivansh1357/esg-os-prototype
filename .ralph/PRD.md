@@ -103,8 +103,8 @@ ALL of the following must be true:
 
 ### Multi-Framework Support (Beyond BRSR)
 - [x] Add GRI framework mapping alongside BRSR
-- [ ] Add CDP questionnaire template support
-- [ ] Add ISSB (IFRS S1/S2) alignment indicators
+- [x] Add CDP questionnaire template support
+- [x] Add ISSB (IFRS S1/S2) alignment indicators
 - [x] Framework cross-mapping (show which BRSR disclosures also satisfy GRI/CDP)
 
 ### Advanced Scope 3

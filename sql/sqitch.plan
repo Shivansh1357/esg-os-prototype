@@ -21,3 +21,4 @@
 160_brsr_ngrbc_principles 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # brsr: 9 NGRBC principles + BRSR Core KPIs + new metrics
 170_audit_pack_format 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # reports: allow zip/json format in report_artifacts
 180_gri_framework_mapping 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # gri: GRI 2021 standards + BRSR cross-mapping
+190_cdp_issb_frameworks 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # cdp+issb: CDP Climate 2024 + ISSB IFRS S1/S2 + cross-mappings

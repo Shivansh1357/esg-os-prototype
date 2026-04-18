@@ -54,6 +54,8 @@ const FRAMEWORK_OPTIONS = [
   { value: 'ALL', label: 'All frameworks' },
   { value: 'BRSR_CORE', label: 'BRSR (India)' },
   { value: 'GRI_2021', label: 'GRI Standards 2021' },
+  { value: 'CDP_CLIMATE', label: 'CDP Climate 2024' },
+  { value: 'ISSB_2023', label: 'ISSB (IFRS S1/S2)' },
 ]
 
 const PRINCIPLE_LABELS: Record<string, string> = {
