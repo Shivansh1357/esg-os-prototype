@@ -42,10 +42,10 @@ ALL of the following must be true:
 - [x] Add error handling + fallback UX when AI service is unavailable
 
 ### Competitive Differentiator: BRSR Compliance Engine
-- [ ] Validate BRSR questionnaire covers all 9 NGRBC principles
-- [ ] Add BRSR Core KPI mappings (9 mandatory KPIs per SEBI circular)
-- [ ] Add compliance rule explanations with evidence linking for each principle
-- [ ] Add BRSR section-to-evidence mapping (which evidence satisfies which disclosure)
+- [x] Validate BRSR questionnaire covers all 9 NGRBC principles
+- [x] Add BRSR Core KPI mappings (9 mandatory KPIs per SEBI circular)
+- [x] Add compliance rule explanations with evidence linking for each principle
+- [x] Add BRSR section-to-evidence mapping (which evidence satisfies which disclosure)
 - [ ] Generate BRSR-formatted export template (matching SEBI prescribed format)
 
 ### Competitive Differentiator: Assurance Readiness

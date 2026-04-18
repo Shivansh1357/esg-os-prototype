@@ -15,7 +15,8 @@ export class ComplianceResolver {
     const client = pgClientFrom(ctx?.req as Request);
     const r = await client.query(
       `SELECT f.id, f.rule_code, f.status::text AS status, f.severity, f.reason, f.evidence_url, f.owner, f.due_date,
-              f.completeness_weight, r.framework, r.description, r.metric_code, r.requires_evidence
+              f.completeness_weight, r.framework, r.description, r.metric_code, r.requires_evidence,
+              r.principle, r.brsr_section
          FROM esg.compliance_findings f
          JOIN esg.compliance_rules r ON r.id = f.rule_id
         WHERE f.tenant_id = app.current_tenant() AND f.period_start=$1 AND f.period_end=$2
@@ -35,7 +36,9 @@ export class ComplianceResolver {
       completenessWeight: Number(x.completeness_weight ?? 1),
       evidenceUrl: x.evidence_url ?? null,
       owner: x.owner ?? null,
-      dueDate: x.due_date ? x.due_date.toISOString().slice(0,10) : null
+      dueDate: x.due_date ? x.due_date.toISOString().slice(0,10) : null,
+      principle: x.principle ?? null,
+      brsrSection: x.brsr_section ?? null
     }));
   }
 

@@ -1,1 +1,2 @@
 2026-04-18 — Wired all 3 AI stub routes (OCR, column mapping, monthly brief) to FastAPI as proxies with graceful fallback. Set NEXT_PUBLIC_AI_URL. Added AI health check endpoint + status indicator in header. Added fallback UX toasts. Build passes.
+2026-04-18 — BRSR 9 NGRBC principles: added 20 new compliance rules covering all 9 principles (P1-P9), 14 new metrics (water, waste, fuel, safety, CSR, etc.), BRSR Core KPI reference table (9 SEBI-mandated KPIs), principle column in Finding GraphQL type, principle progress cards and filter in compliance page. SQL migration 160.

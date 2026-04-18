@@ -43,6 +43,8 @@ export class Finding {
   @Field({nullable:true}) evidenceUrl?: string;
   @Field({nullable:true}) owner?: string;
   @Field({nullable:true}) dueDate?: string;
+  @Field({nullable:true}) principle?: string;
+  @Field({nullable:true}) brsrSection?: string;
 }
 
 @InputType()
