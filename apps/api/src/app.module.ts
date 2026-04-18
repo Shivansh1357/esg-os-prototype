@@ -15,8 +15,9 @@ import { JwtAuthMiddleware } from './auth/jwt.middleware';
 import { RequestContextMiddleware } from './observability/request.middleware';
 import { PilotController } from './pilot/pilot.controller';
 import { FeedbackController } from './pilot/feedback.controller';
+import { NotificationsController } from './notifications/notifications.controller';
 
-@Module({ imports: [GraphModule], controllers: [UploadController, ReportsController, SuppliersController, PublicController, AuditorController, AuditorPublicController, ExecController, HealthController, AuditController, MetricsController, PilotController, FeedbackController] })
+@Module({ imports: [GraphModule], controllers: [UploadController, ReportsController, SuppliersController, PublicController, AuditorController, AuditorPublicController, ExecController, HealthController, AuditController, MetricsController, PilotController, FeedbackController, NotificationsController] })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(RequestContextMiddleware, JwtAuthMiddleware, WithTenantMiddleware).forRoutes('*');

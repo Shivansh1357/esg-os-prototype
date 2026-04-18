@@ -114,7 +114,7 @@ ALL of the following must be true:
 - [ ] Value chain BRSR Core collection (per SEBI requirement)
 
 ### Platform Maturity
-- [ ] Email notifications for pending approvals
+- [x] Email notifications for pending approvals
 - [ ] Scheduled report generation (monthly/quarterly)
 - [ ] API rate limiting and abuse protection
 - [ ] User activity dashboard for admin
