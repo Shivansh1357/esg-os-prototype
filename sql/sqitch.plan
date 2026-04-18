@@ -18,5 +18,5 @@
 130_exec_kpi_read_path 2026-02-16T00:00:00Z ESG OS <dev@esg-os.local> # exec: materialized read path + refresh strategy
 140_supplier_scope3_engine 2026-02-16T00:00:00Z ESG OS <dev@esg-os.local> # suppliers: scope3 integration + coverage KPIs
 150_pilot_onboarding 2026-02-17T00:00:00Z ESG OS <dev@esg-os.local> # pilot: onboarding metrics, feedback, checklist helpers
-
-
+160_brsr_ngrbc_principles 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # brsr: 9 NGRBC principles + BRSR Core KPIs + new metrics
+170_audit_pack_format 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # reports: allow zip/json format in report_artifacts
