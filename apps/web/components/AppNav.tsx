@@ -66,7 +66,7 @@ function ReportAwareLink({
 }) {
   const pathname = usePathname()
   const nextHref = useReportAwareLink(href)
-  const active = pathname === href
+  const active = pathname === href || pathname.startsWith(href + '/')
 
   return (
     <Link

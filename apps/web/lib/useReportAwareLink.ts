@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useReportContext } from '@/app/report-context'
 
 export function appendReportId(to: string, reportId: string | null) {
@@ -16,7 +16,20 @@ export function appendReportId(to: string, reportId: string | null) {
   return `${path}${nextQuery ? `?${nextQuery}` : ''}${hash ? `#${hash}` : ''}`
 }
 
+/**
+ * Returns the href with reportId appended — but defers to after hydration
+ * to avoid server/client mismatch (reportId comes from localStorage).
+ */
 export function useReportAwareLink(to: string) {
   const { reportId } = useReportContext()
-  return useMemo(() => appendReportId(to, reportId), [to, reportId])
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // During SSR and initial hydration, return the plain href to match server output.
+  // After mount, append the reportId from localStorage.
+  if (!mounted) return to
+  return appendReportId(to, reportId)
 }

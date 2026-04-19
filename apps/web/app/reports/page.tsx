@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getJSON, gql } from '@/lib/api'
@@ -47,7 +47,7 @@ type ExportOut = { url: string; mode: 'live' | 'snapshot' }
 export default function ReportsPage() {
   const qc = useQueryClient()
   const { reportId, setReportId } = useReportContext()
-  const [name, setName] = useState<string>(() => `BRSR Draft - ${new Date().toISOString().slice(0, 10)}`)
+  const [name, setName] = useState<string>('BRSR Draft')
   const [template, setTemplate] = useState<'BRSR'>('BRSR')
   const [exporting, setExporting] = useState<'pdf' | 'xlsx' | 'json' | 'brsr' | null>(null)
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
@@ -58,8 +58,15 @@ export default function ReportsPage() {
   const [assuring, setAssuring] = useState(false)
   const [auditPacking, setAuditPacking] = useState(false)
   const [freezing, setFreezing] = useState(false)
-  const onboarding = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('onboarding') === '1' : false
-  const onboardingStep = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('step') : null
+  const [onboarding, setOnboarding] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState<string | null>(null)
+
+  useEffect(() => {
+    setName(`BRSR Draft - ${new Date().toISOString().slice(0, 10)}`)
+    const params = new URLSearchParams(window.location.search)
+    setOnboarding(params.get('onboarding') === '1')
+    setOnboardingStep(params.get('step'))
+  }, [])
 
   const reports = useQuery({
     queryKey: ['reports-list'],

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getJSON, gql } from '@/lib/api'
 import EvidenceAttachModal from '@/components/EvidenceAttachModal'
@@ -87,7 +87,12 @@ export default function CompliancePage() {
   const isAuditor = role === 'AUDITOR'
   const canResolve = role === 'ADMIN' || role === 'MEMBER'
   const qc = useQueryClient()
-  const [date, setDate] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('qstart') : null) || todayISO())
+  const [date, setDate] = useState<string>(todayISO)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('qstart')
+    if (stored) setDate(stored)
+  }, [])
   const { ps, pe } = useMemo(() => quarterRange(date), [date])
 
   const selectedReport = useQuery({
