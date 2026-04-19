@@ -16,3 +16,10 @@
 2026-04-19 — [P1] Scheduled reports: worker task report.scheduled.ts, SQL migration 220 with report_schedules table, cron-based enqueue proc, REST endpoints.
 2026-04-19 — [P1] User activity dashboard: /admin/activity page with activity stats + event table, ActivityController REST endpoint, added to nav.
 2026-04-19 — [P1] Enhanced Prometheus metrics: added export_total, audit_pack_total, compliance_eval_total, notification_total, supplier_invite_total, supplier_response_total counters. 22 Sqitch migrations, 14/14 API tests pass.
+2026-04-19 — [P1] Rate limiting: added enforceRateLimit to suppliers/invite(10/min), suppliers/spend(30/min), notifications/generate(5/min), upload(20/min), admin/activity(30/min).
+2026-04-19 — [P1] Data retention: SQL migration 230 with retention_policies table, default policies (audit 365d, notifications 90d, artifacts 730d), apply_retention_policies() proc.
+2026-04-19 — [P1] Multi-language OCR: added lang param (eng/hin/eng+hin) to OCR endpoint, detect-language endpoint, language selector in UploadBillModal.
+2026-04-19 — [P1] Error tracking: Sentry integration with dynamic import (no-op when SENTRY_DSN not set), unhandledRejection capture, structured log fallback.
+2026-04-19 — [P1] Backup/restore: scripts/db-backup.sh (backup/restore/list commands, Docker-aware pg_dump).
+2026-04-19 — [P1] Performance budget: scripts/performance-budget.sh (build size, JS/CSS bundle, TypeScript compile time, migration count).
+2026-04-19 — 23 Sqitch migrations, 14/14 API tests pass, lint clean, build clean. P1: 18/19 items complete.

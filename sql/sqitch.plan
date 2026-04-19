@@ -25,3 +25,4 @@
 200_scope3_spend_estimation 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # scope3: EEIO factors + supplier spend + spend-based estimation
 210_notifications 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # notifications: pending approvals, compliance gaps, email worker
 220_scheduled_reports 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # reports: scheduled report generation, cron-based enqueue, RLS
+230_data_retention 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # retention: configurable data retention policies + cleanup function

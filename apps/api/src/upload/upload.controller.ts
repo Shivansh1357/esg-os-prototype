@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
 import { S3Client } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import * as crypto from 'crypto';
-import { requireRole } from '../rbac/access';
+import { enforceRateLimit, requireRole } from '../rbac/access';
 
 const s3 = new S3Client({
   region: 'us-east-1',
@@ -24,6 +24,7 @@ export class UploadController {
   @Post('/upload')
   async presign(@Body() body: UploadReq): Promise<UploadRes> {
     requireRole('ADMIN', 'MEMBER');
+    enforceRateLimit('upload', 20, 60_000);
     if (!body?.filename || !body?.contentType) {
       throw new BadRequestException('filename and contentType required');
     }

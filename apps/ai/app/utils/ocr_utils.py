@@ -19,9 +19,16 @@ KWH = re.compile(r"\b([1-9]\d{0,3}(?:[,\s]?\d{3})*(?:\.\d+)?)\s*(kwh|kWh|KWH)\b"
 SITE_NEAR = re.compile(r"(site|account|location|meter|service)\s*[:\-]?\s*([A-Za-z0-9\-_/]+)", re.I)
 
 
-def extract_texts_from_pdf(data: bytes, max_pages: int | None = None) -> List[str]:
+SUPPORTED_LANGS = {"eng", "hin", "eng+hin"}
+
+
+def extract_texts_from_pdf(
+    data: bytes, max_pages: int | None = None, lang: str = "eng"
+) -> List[str]:
     if max_pages is None:
         max_pages = int(getattr(settings, "OCR_MAX_PAGES", 4))
+    if lang not in SUPPORTED_LANGS:
+        lang = "eng"
     texts: List[str] = []
     # Try text layer
     with pdfplumber.open(io.BytesIO(data)) as pdf:
@@ -43,9 +50,31 @@ def extract_texts_from_pdf(data: bytes, max_pages: int | None = None) -> List[st
             page = doc.load_page(i)
             pix = page.get_pixmap(dpi=200)
             img = Image.open(io.BytesIO(pix.tobytes()))
-            texts[i] = pytesseract.image_to_string(img)
+            texts[i] = pytesseract.image_to_string(img, lang=lang)
 
     return texts
+
+
+def detect_primary_language(image: Image.Image) -> str:
+    """Run OCR with both eng and hin, compare confidence to pick the dominant language."""
+    try:
+        eng_data = pytesseract.image_to_data(image, lang="eng", output_type=pytesseract.Output.DICT)
+        hin_data = pytesseract.image_to_data(image, lang="hin", output_type=pytesseract.Output.DICT)
+    except pytesseract.TesseractError:
+        return "eng"
+
+    def _avg_conf(data: Dict[str, Any]) -> float:
+        confs = [int(c) for c in data.get("conf", []) if int(c) >= 0]
+        return sum(confs) / len(confs) if confs else 0.0
+
+    eng_conf = _avg_conf(eng_data)
+    hin_conf = _avg_conf(hin_data)
+
+    if hin_conf > eng_conf + 5:
+        return "hin"
+    if eng_conf > hin_conf + 5:
+        return "eng"
+    return "eng+hin"
 
 
 def candidates_from_texts(texts: List[str]) -> Dict[str, List[Dict[str, Any]]]:

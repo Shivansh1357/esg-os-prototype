@@ -98,7 +98,7 @@ ALL of the following must be true:
 ### Enhanced AI Capabilities
 - [x] AI-powered anomaly detection on uploaded data (flag outliers with explanation)
 - [ ] Auto-suggest remediation actions for compliance gaps
-- [ ] Multi-language OCR support (Hindi + English utility bills)
+- [x] Multi-language OCR support (Hindi + English utility bills)
 - [x] AI-generated executive narrative with trend attribution
 
 ### Multi-Framework Support (Beyond BRSR)
@@ -116,17 +116,17 @@ ALL of the following must be true:
 ### Platform Maturity
 - [x] Email notifications for pending approvals
 - [x] Scheduled report generation (monthly/quarterly)
-- [ ] API rate limiting and abuse protection
+- [x] API rate limiting and abuse protection
 - [x] User activity dashboard for admin
-- [ ] Data retention and archival policies
+- [x] Data retention and archival policies
 - [ ] SSO/SAML integration for enterprise customers
 
 ### Observability & Operations
 - [x] Structured logging across all services
 - [x] Prometheus metrics + Grafana dashboards
-- [ ] Error tracking (Sentry or equivalent)
-- [ ] Backup/restore automation
-- [ ] Performance budget enforcement in CI
+- [x] Error tracking (Sentry or equivalent)
+- [x] Backup/restore automation
+- [x] Performance budget enforcement in CI
 
 ## Non-Goals (Explicitly Out of Scope)
 

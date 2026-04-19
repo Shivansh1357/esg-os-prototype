@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { pgClientFrom } from '../db/reqpg';
-import { requireRole } from '../rbac/access';
+import { enforceRateLimit, requireRole } from '../rbac/access';
 
 type NotificationItem = {
   id: string;
@@ -61,6 +61,7 @@ export class NotificationsController {
     @Req() req: Request
   ) {
     requireRole('ADMIN');
+    enforceRateLimit('notifications_generate', 5, 60_000);
     const client = pgClientFrom(req);
     const tid = (await client.query(`SELECT current_setting('app.tenant_id', true) AS tid`)).rows[0].tid;
     const approvalCount = await client.query(`SELECT esg.notify_pending_approvals($1, $2, $3) AS cnt`, [tid, periodStart, periodEnd]);

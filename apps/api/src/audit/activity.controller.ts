@@ -1,7 +1,7 @@
 import { Controller, Get, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { pgClientFrom } from '../db/reqpg';
-import { requireRole } from '../rbac/access';
+import { enforceRateLimit, requireRole } from '../rbac/access';
 
 type ActivityEvent = {
   id: string;
@@ -29,6 +29,7 @@ export class ActivityController {
   @Get('/admin/activity')
   async activity(@Req() req: Request): Promise<ActivityResponse> {
     requireRole('ADMIN', 'MEMBER');
+    enforceRateLimit('admin_activity', 30, 60_000);
     const client = pgClientFrom(req);
 
     const eventsResult = await client.query(

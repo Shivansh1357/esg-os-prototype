@@ -5,7 +5,12 @@ export async function POST(request: Request) {
     const body = await request.clone().arrayBuffer()
     const contentType = request.headers.get('content-type') || 'application/json'
 
-    const upstream = await fetch(`${AI_URL}/ocr/utility-bill`, {
+    // Forward lang query parameter to the AI service
+    const { searchParams } = new URL(request.url)
+    const lang = searchParams.get('lang') || 'eng'
+    const upstreamUrl = `${AI_URL}/ocr/utility-bill?lang=${encodeURIComponent(lang)}`
+
+    const upstream = await fetch(upstreamUrl, {
       method: 'POST',
       headers: { 'Content-Type': contentType },
       body,

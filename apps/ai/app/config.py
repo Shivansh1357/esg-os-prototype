@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     OCR_MAX_PAGES: int = 4
     OCR_CONFIDENCE_HIGH: float = 0.8
     OCR_CONFIDENCE_MEDIUM: float = 0.6
+    OCR_DEFAULT_LANG: str = "eng"
+    OCR_SUPPORTED_LANGS: str = "eng,hin,eng+hin"
 
     # --- D3 options ---
     LLM_PROVIDER: str = "openai"  # "openai" | "bedrock"

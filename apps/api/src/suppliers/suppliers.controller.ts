@@ -27,6 +27,7 @@ export class SuppliersController {
   @Post('/suppliers/invite')
   async invite(@Body() body: InviteIn, @Req() req: Request): Promise<InviteOut> {
     requireRole('ADMIN', 'MEMBER');
+    enforceRateLimit('supplier_invite', 10, 60_000);
     const client = pgClientFrom(req);
     const ttl = Number(process.env.SUPPLIER_INVITE_TTL_HOURS || '168');
     const origin = process.env.PUBLIC_ORIGIN || 'http://localhost:5051';
@@ -171,6 +172,7 @@ export class SuppliersController {
     @Req() req: Request
   ) {
     requireRole('ADMIN', 'MEMBER');
+    enforceRateLimit('supplier_spend', 30, 60_000);
     const client = pgClientFrom(req);
     const tid = (await client.query(`SELECT current_setting('app.tenant_id', true) AS tid`)).rows[0].tid;
     let inserted = 0;

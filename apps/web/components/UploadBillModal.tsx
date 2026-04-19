@@ -37,6 +37,8 @@ export default function UploadBillModal({ onUploaded, ...btn }: Props) {
   const [selected, setSelected] = useState<{ date?: string; kWh?: string; site?: string }>({})
   const [s3Key, setS3Key] = useState<string | undefined>(undefined)
   const [entityId, setEntityId] = useState('')
+  const [ocrLang, setOcrLang] = useState<'eng' | 'hin' | 'eng+hin' | 'auto'>('eng')
+  const [detecting, setDetecting] = useState(false)
   const ref = useRef<HTMLInputElement>(null)
 
   const busy = stage !== 'idle' && stage !== 'mapping' && stage !== 'done'
@@ -58,7 +60,7 @@ export default function UploadBillModal({ onUploaded, ...btn }: Props) {
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
             <div className="space-y-2">
               <Label htmlFor="upload-file">Source file</Label>
               <Input
@@ -69,8 +71,25 @@ export default function UploadBillModal({ onUploaded, ...btn }: Props) {
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <Button data-test="upload-bill-start-btn" onClick={handleGo} disabled={!file || stage !== 'idle'}>
-              Start
+            <div className="space-y-2">
+              <Label>OCR Language</Label>
+              <Select
+                value={ocrLang}
+                onValueChange={(v) => setOcrLang(v as typeof ocrLang)}
+              >
+                <SelectTrigger data-test="ocr-lang-select" className="w-[150px]">
+                  <SelectValue placeholder="Language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eng">English</SelectItem>
+                  <SelectItem value="hin">Hindi</SelectItem>
+                  <SelectItem value="eng+hin">English + Hindi</SelectItem>
+                  <SelectItem value="auto">Auto-detect</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button data-test="upload-bill-start-btn" onClick={handleGo} disabled={!file || stage !== 'idle' || detecting}>
+              {detecting ? 'Detecting...' : 'Start'}
             </Button>
           </div>
 
@@ -98,8 +117,32 @@ export default function UploadBillModal({ onUploaded, ...btn }: Props) {
     </Dialog>
   )
 
+  async function resolveOcrLang(): Promise<'eng' | 'hin' | 'eng+hin'> {
+    if (ocrLang !== 'auto') return ocrLang
+    if (!file) return 'eng'
+    try {
+      setDetecting(true)
+      const fd = new FormData()
+      fd.append('file', file)
+      const resp = await fetch('/api/ai/ocr/detect-language', { method: 'POST', body: fd })
+      if (!resp.ok) return 'eng'
+      const data = await resp.json() as { language: string }
+      const lang = data.language
+      if (lang === 'hin' || lang === 'eng+hin') return lang
+      return 'eng'
+    } catch {
+      return 'eng'
+    } finally {
+      setDetecting(false)
+    }
+  }
+
   async function handleGo() {
     if (!file) return
+
+    // Resolve language before starting the pipeline
+    const resolvedLang = await resolveOcrLang()
+
     setStage('presign')
     const presign = await postJSON<{ s3Key: string; meta: any; post: { url: string; fields: Record<string, string> } }>('/upload', {
       filename: file.name,
@@ -141,13 +184,17 @@ export default function UploadBillModal({ onUploaded, ...btn }: Props) {
       }
     } else {
       try {
-        const ai = await postAI<{ fields: Array<{ name: string; candidates: Array<{ value: string; conf: number }> }> }>(
-          '/ocr/utility-bill', { s3Key: presign.s3Key })
+        const langParam = `?lang=${encodeURIComponent(resolvedLang)}`
+        const ai = await postAI<{ fields: Array<{ name: string; candidates: Array<{ value: string; conf: number }> }>; lang: string }>(
+          `/ocr/utility-bill${langParam}`, { s3Key: presign.s3Key })
         const pick = (n: string) => ai.fields.find(f => f.name === n)?.candidates?.[0]?.value
         setPreview([{ kWh: pick('kWh'), date: pick('date'), site: pick('site') }])
         setMapResp({ mapping: { kWh: 'kWh', date: 'date', site: 'site' }, confidence: 0.7 })
         setSelected({ kWh: 'kWh', date: 'date', site: 'site' })
         setStage('mapping')
+        if (resolvedLang !== 'eng') {
+          toast.info(`OCR ran with language: ${resolvedLang === 'hin' ? 'Hindi' : 'English + Hindi'}`)
+        }
       } catch {
         setPreview([{ note: 'Uploaded. OCR service not available; you can still save manually after mapping.' }])
         setStage('mapping')
@@ -208,6 +255,8 @@ export default function UploadBillModal({ onUploaded, ...btn }: Props) {
     setSelected({})
     setS3Key(undefined)
     setEntityId('')
+    setOcrLang('eng')
+    setDetecting(false)
   }
 }
 
