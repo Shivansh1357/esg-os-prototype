@@ -14,7 +14,6 @@ from app.utils.ocr_utils import (
     extract_texts_from_pdf,
     candidates_from_texts,
     detect_primary_language,
-    SUPPORTED_LANGS,
 )
 
 
