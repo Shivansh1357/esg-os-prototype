@@ -9,6 +9,7 @@ export const NAV_ITEMS = [
   { href: '/onboarding', label: 'Onboarding' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/entities', label: 'Entities' },
+  { href: '/admin/activity', label: 'Activity' },
   { href: '/data', label: 'Data Hub' },
   { href: '/emissions', label: 'Emissions' },
   { href: '/compliance', label: 'Compliance' },

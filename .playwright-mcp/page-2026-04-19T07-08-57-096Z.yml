@@ -1,0 +1,113 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - paragraph [ref=e6]: ESG Console
+        - paragraph [ref=e7]: Production-ready operating system for ESG reporting.
+      - navigation [ref=e9]:
+        - link "Onboarding" [ref=e10] [cursor=pointer]:
+          - /url: /onboarding?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Users" [ref=e11] [cursor=pointer]:
+          - /url: /admin/users?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Entities" [ref=e12] [cursor=pointer]:
+          - /url: /admin/entities?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Data Hub" [ref=e13] [cursor=pointer]:
+          - /url: /data?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Emissions" [ref=e14] [cursor=pointer]:
+          - /url: /emissions?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Compliance" [ref=e15] [cursor=pointer]:
+          - /url: /compliance?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Reports" [ref=e16] [cursor=pointer]:
+          - /url: /reports?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Suppliers" [ref=e17] [cursor=pointer]:
+          - /url: /suppliers?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Exec" [ref=e18] [cursor=pointer]:
+          - /url: /exec?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Audit" [ref=e19] [cursor=pointer]:
+          - /url: /audit?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+        - link "Pilot" [ref=e20] [cursor=pointer]:
+          - /url: /pilot?reportId=b175a24d-b55b-4aaf-baa6-c8cbd63afcba
+    - generic [ref=e21]:
+      - banner [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e25]:
+            - paragraph [ref=e26]: ESG Console
+            - generic [ref=e27]:
+              - generic [ref=e28]: Workspace
+              - img [ref=e29]
+              - generic [ref=e31]: Reports
+          - generic [ref=e33]:
+            - img
+            - textbox "Search" [ref=e34]:
+              - /placeholder: Search pages and controls...
+          - generic [ref=e35]:
+            - generic "AI Offline" [ref=e36]:
+              - generic [ref=e38]: AI Offline
+            - button "Toggle theme" [ref=e39] [cursor=pointer]:
+              - img
+      - main [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - heading "Reports" [level=2] [ref=e44]
+              - paragraph [ref=e45]: Create drafts, export report artifacts, and manage auditor access and freeze controls.
+            - generic [ref=e47]:
+              - generic [ref=e48]: Active report context
+              - combobox [ref=e49]:
+                - option "Select report…" [selected]
+          - generic [ref=e50]:
+            - heading "Report Metadata" [level=3] [ref=e52]
+            - generic [ref=e53]: "Status: Not selected"
+            - generic [ref=e54]:
+              - generic [ref=e55]: "Factor Set: —"
+              - generic [ref=e56]: "Calc Version: —"
+              - generic [ref=e57]: "Completeness %: —"
+              - generic [ref=e58]: "Frozen At: —"
+          - generic [ref=e59]:
+            - generic [ref=e60]:
+              - heading "Generate Draft" [level=3] [ref=e62]
+              - generic [ref=e63]:
+                - generic [ref=e64]:
+                  - generic [ref=e65]: Report name
+                  - textbox "BRSR Draft - YYYY-MM-DD" [ref=e66]: BRSR Draft - 2026-04-19
+                - generic [ref=e67]:
+                  - generic [ref=e68]: Template
+                  - combobox [ref=e69]:
+                    - option "BRSR" [selected]
+              - generic [ref=e70]:
+                - button "Generate Draft" [ref=e71] [cursor=pointer]
+                - button "Export PDF" [ref=e72] [cursor=pointer]
+                - button "Export Excel" [ref=e73] [cursor=pointer]
+                - button "Export JSON" [ref=e74] [cursor=pointer]
+                - button "BRSR Report" [ref=e75] [cursor=pointer]
+            - generic [ref=e76]:
+              - heading "Sections" [level=3] [ref=e78]
+              - list [ref=e79]:
+                - listitem [ref=e80]:
+                  - code [ref=e82]: SUMMARY
+                  - generic [ref=e83]: DRAFT
+                - listitem [ref=e84]:
+                  - code [ref=e86]: EMISSIONS
+                  - generic [ref=e87]: DRAFT
+                - listitem [ref=e88]:
+                  - code [ref=e90]: COMPLIANCE
+                  - generic [ref=e91]: DRAFT
+          - generic [ref=e92]:
+            - heading "Auditor Tools" [level=3] [ref=e94]
+            - generic [ref=e95]:
+              - button "Generate access link" [ref=e96] [cursor=pointer]
+              - button "View lineage" [disabled]
+              - button "Assurance worksheet" [disabled]
+              - button "Audit Pack (ZIP)" [ref=e97] [cursor=pointer]
+              - button "Freeze report" [ref=e98] [cursor=pointer]
+          - generic [ref=e99]:
+            - heading "Exports" [level=3] [ref=e101]
+            - generic [ref=e102]:
+              - img [ref=e103]
+              - paragraph [ref=e106]: No exports yet.
+              - paragraph [ref=e107]: Generate any format to see downloadable artifacts here.
+  - button "Feedback" [ref=e109] [cursor=pointer]:
+    - img
+    - text: Feedback
+  - region "Notifications alt+T"
+  - alert [ref=e110]

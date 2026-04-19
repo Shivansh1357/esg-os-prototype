@@ -35,3 +35,5 @@ htmlcov/
 .cache/
 .cursor/
 
+screenshots/
+.playwright-mcp/

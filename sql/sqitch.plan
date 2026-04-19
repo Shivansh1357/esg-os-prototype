@@ -24,3 +24,4 @@
 190_cdp_issb_frameworks 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # cdp+issb: CDP Climate 2024 + ISSB IFRS S1/S2 + cross-mappings
 200_scope3_spend_estimation 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # scope3: EEIO factors + supplier spend + spend-based estimation
 210_notifications 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # notifications: pending approvals, compliance gaps, email worker
+220_scheduled_reports 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # reports: scheduled report generation, cron-based enqueue, RLS

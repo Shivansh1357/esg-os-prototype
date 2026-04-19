@@ -8,6 +8,7 @@ import puppeteer from 'puppeteer';
 import * as archiver from 'archiver';
 import { pgClientFrom } from '../db/reqpg';
 import { currentRole, requireRole } from '../rbac/access';
+import { incMetric } from '../observability/metrics';
 
 const s3 = new S3Client({
   region: 'us-east-1',
@@ -225,6 +226,7 @@ export class ReportsController {
         [id, `s3://${bucket}/${key}`, zipBuffer.length]
       );
 
+      incMetric('audit_pack_total');
       return { url: getUrl, mode: payload.mode === 'snapshot' ? 'snapshot' : 'live' };
     } finally {
       await client.query(`SELECT pg_advisory_unlock($1,$2)`, [lockKey1, lockKey2]);

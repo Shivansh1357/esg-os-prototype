@@ -5,7 +5,13 @@ type CounterName =
   | 'recalc_enqueue_total'
   | 'recalc_enqueue_dedup_total'
   | 'recalc_inline_total'
-  | 'list_facts_total';
+  | 'list_facts_total'
+  | 'export_total'
+  | 'audit_pack_total'
+  | 'compliance_eval_total'
+  | 'notification_total'
+  | 'supplier_invite_total'
+  | 'supplier_response_total';
 
 type HistogramName = 'recalc_duration_ms' | 'list_facts_duration_ms';
 
@@ -17,6 +23,12 @@ const counters: Record<CounterName, number> = {
   recalc_enqueue_dedup_total: 0,
   recalc_inline_total: 0,
   list_facts_total: 0,
+  export_total: 0,
+  audit_pack_total: 0,
+  compliance_eval_total: 0,
+  notification_total: 0,
+  supplier_invite_total: 0,
+  supplier_response_total: 0,
 };
 
 const histogramConfig: Record<HistogramName, number[]> = {
@@ -78,6 +90,24 @@ function renderCounters(): string[] {
     '# HELP list_facts_total listFacts query calls served',
     '# TYPE list_facts_total counter',
     `list_facts_total ${counters.list_facts_total}`,
+    '# HELP export_total Total report exports',
+    '# TYPE export_total counter',
+    `export_total ${counters.export_total}`,
+    '# HELP audit_pack_total Total audit pack ZIP exports',
+    '# TYPE audit_pack_total counter',
+    `audit_pack_total ${counters.audit_pack_total}`,
+    '# HELP compliance_eval_total Total compliance evaluations',
+    '# TYPE compliance_eval_total counter',
+    `compliance_eval_total ${counters.compliance_eval_total}`,
+    '# HELP notification_total Total notifications generated',
+    '# TYPE notification_total counter',
+    `notification_total ${counters.notification_total}`,
+    '# HELP supplier_invite_total Total supplier invitations sent',
+    '# TYPE supplier_invite_total counter',
+    `supplier_invite_total ${counters.supplier_invite_total}`,
+    '# HELP supplier_response_total Total supplier responses received',
+    '# TYPE supplier_response_total counter',
+    `supplier_response_total ${counters.supplier_response_total}`,
   ];
 }
 

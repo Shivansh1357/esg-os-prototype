@@ -115,15 +115,15 @@ ALL of the following must be true:
 
 ### Platform Maturity
 - [x] Email notifications for pending approvals
-- [ ] Scheduled report generation (monthly/quarterly)
+- [x] Scheduled report generation (monthly/quarterly)
 - [ ] API rate limiting and abuse protection
-- [ ] User activity dashboard for admin
+- [x] User activity dashboard for admin
 - [ ] Data retention and archival policies
 - [ ] SSO/SAML integration for enterprise customers
 
 ### Observability & Operations
-- [ ] Structured logging across all services
-- [ ] Prometheus metrics + Grafana dashboards
+- [x] Structured logging across all services
+- [x] Prometheus metrics + Grafana dashboards
 - [ ] Error tracking (Sentry or equivalent)
 - [ ] Backup/restore automation
 - [ ] Performance budget enforcement in CI
