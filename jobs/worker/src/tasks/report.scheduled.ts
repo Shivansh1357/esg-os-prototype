@@ -63,7 +63,7 @@ async function callExportEndpoint(
   }
 }
 
-const task: Task = async (payload, { logger }) => {
+const task: Task = async (payload, { logger, job }) => {
   if (!isPayload(payload)) {
     logger.error('report.scheduled FAIL: invalid payload');
     throw new Error('Invalid report.scheduled payload');
@@ -126,15 +126,19 @@ const task: Task = async (payload, { logger }) => {
           [scheduleId, tenantId],
         );
 
-        // Insert a notification for the completed report
+        // Insert a notification for the completed report. The dedup key is the
+        // graphile-worker job id: it is stable across retries of THIS job (so a
+        // retry won't duplicate the notification) but unique per scheduled run.
         await trackClient.query(
-          `INSERT INTO esg.notifications (tenant_id, type, title, body, link)
-           VALUES ($1, 'REPORT_READY', $2, $3, $4)`,
+          `INSERT INTO esg.notifications (tenant_id, type, title, body, link, dedup_key)
+           VALUES ($1, 'REPORT_READY', $2, $3, $4, $5)
+           ON CONFLICT (tenant_id, dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING`,
           [
             tenantId,
             `Scheduled ${format.toUpperCase()} report generated`,
             `Your scheduled ${format.toUpperCase()} report has been generated successfully.`,
             `/reports/${reportId}`,
+            `report_ready:job:${job.id}`,
           ],
         );
 
