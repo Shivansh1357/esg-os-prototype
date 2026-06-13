@@ -26,3 +26,4 @@
 210_notifications 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # notifications: pending approvals, compliance gaps, email worker
 220_scheduled_reports 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # reports: scheduled report generation, cron-based enqueue, RLS
 230_data_retention 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # retention: configurable data retention policies + cleanup function
+240_tenant_settings 2026-06-13T00:00:00Z ESG OS <dev@esg-os.local> # settings: per-tenant onboarding/reporting settings + RLS
