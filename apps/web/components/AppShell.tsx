@@ -1,13 +1,14 @@
 "use client"
 
-import { useMemo } from "react"
-import { usePathname } from "next/navigation"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { ChevronRight, Menu, Search } from "lucide-react"
 import AppNav, { NAV_ITEMS } from "@/components/AppNav"
 import ThemeToggle from "@/components/theme-toggle"
 import { AiStatusIndicator } from "@/components/product"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import {
   Sheet,
   SheetContent,
@@ -72,14 +73,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="hidden min-w-[280px] flex-1 items-center justify-center px-6 md:flex">
-                <div className="relative w-full max-w-md">
-                  <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
-                  <Input
-                    aria-label="Search"
-                    placeholder="Search pages and controls..."
-                    className="h-9 pl-9"
-                  />
-                </div>
+                <GlobalSearch />
               </div>
 
               <div className="flex items-center gap-3">
@@ -94,6 +88,127 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+    </div>
+  )
+}
+
+function GlobalSearch() {
+  const router = useRouter()
+  const listboxId = useId()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [query, setQuery] = useState("")
+  const [open, setOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const results = useMemo(() => {
+    const term = query.trim().toLowerCase()
+    if (!term) return [] as typeof NAV_ITEMS
+    return NAV_ITEMS.filter(
+      (item) =>
+        item.label.toLowerCase().includes(term) || item.href.toLowerCase().includes(term)
+    )
+  }, [query])
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [query])
+
+  useEffect(() => {
+    if (!open) return
+    function onClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside)
+    return () => document.removeEventListener("mousedown", onClickOutside)
+  }, [open])
+
+  function go(href: string) {
+    setOpen(false)
+    setQuery("")
+    router.push(href)
+  }
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      setOpen(false)
+      return
+    }
+    if (!results.length) return
+    if (event.key === "ArrowDown") {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex((prev) => (prev + 1) % results.length)
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex((prev) => (prev - 1 + results.length) % results.length)
+    } else if (event.key === "Enter") {
+      event.preventDefault()
+      const target = results[activeIndex] ?? results[0]
+      if (target) go(target.href)
+    }
+  }
+
+  const showResults = open && results.length > 0
+  const activeOptionId = showResults ? `${listboxId}-option-${activeIndex}` : undefined
+
+  return (
+    <div ref={containerRef} className="relative w-full max-w-md">
+      <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
+      <Input
+        data-test="global-search"
+        aria-label="Search pages and controls"
+        placeholder="Search pages and controls..."
+        className="h-9 pl-9"
+        role="combobox"
+        aria-expanded={showResults}
+        aria-controls={showResults ? listboxId : undefined}
+        aria-activedescendant={activeOptionId}
+        aria-autocomplete="list"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => {
+          if (query.trim()) setOpen(true)
+        }}
+        onKeyDown={onKeyDown}
+      />
+      {showResults ? (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-label="Search results"
+          className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-md border border-border/70 bg-popover p-1 shadow-md"
+        >
+          {results.map((item, index) => (
+            <li
+              key={item.href}
+              id={`${listboxId}-option-${index}`}
+              role="option"
+              aria-selected={index === activeIndex}
+            >
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between rounded-sm px-3 py-2 text-left text-sm",
+                  index === activeIndex
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => go(item.href)}
+              >
+                <span>{item.label}</span>
+                <span className="text-xs text-muted-foreground">{item.href}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   )
 }

@@ -28,11 +28,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   DataTableShell,
   EmptyState,
   FilterBar,
-  LoadingState,
   PageHeader,
   SectionCard,
   StatusBanner,
@@ -202,7 +202,34 @@ export default function DataHubPage() {
         right={<span className="text-sm text-muted-foreground">{totalRows} row(s) available</span>}
       >
         {isLoading ? (
-          <LoadingState testId="data-hub-loading" label="Loading facts..." />
+          <DataTableShell testId="data-hub-loading">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Metric</TableHead>
+                  <TableHead>Entity</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Evidence</TableHead>
+                  <TableHead>Outlier</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i} aria-hidden="true">
+                    {Array.from({ length: 9 }).map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTableShell>
         ) : null}
 
         {isError ? (

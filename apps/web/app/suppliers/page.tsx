@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import {
   DataTableShell,
@@ -171,7 +172,17 @@ export default function SuppliersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(responses.data ?? []).map((r) => (
+              {responses.isPending &&
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={`skeleton-${i}`} aria-hidden="true">
+                    {Array.from({ length: 7 }).map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              {!responses.isPending && (responses.data ?? []).map((r) => (
                 <TableRow key={r.id}>
                   <TableCell>{r.supplierName}</TableCell>
                   <TableCell>{r.category}</TableCell>
@@ -192,7 +203,7 @@ export default function SuppliersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {(!responses.data || responses.data.length === 0) && (
+              {!responses.isPending && (!responses.data || responses.data.length === 0) && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No responses yet.</TableCell>
                 </TableRow>
