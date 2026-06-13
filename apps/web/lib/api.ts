@@ -27,6 +27,12 @@ export async function postJSON<T>(path: string, body: unknown): Promise<T> {
   return r.json();
 }
 
+export async function putJSON<T>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(`${API}${path}`, { method:'PUT', headers: headers(), body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
 export async function getJSON<T>(path: string): Promise<T> {
   const r = await fetch(`${API}${path}`, {
     method: 'GET',

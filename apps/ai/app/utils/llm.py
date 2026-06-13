@@ -20,7 +20,7 @@ def suggest_mapping_llm(headers: List[str]) -> Dict[str, str]:
             if not settings.OPENAI_API_KEY:
                 return {}
             os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
-            client = OpenAI()
+            client = OpenAI(timeout=settings.LLM_TIMEOUT_SECONDS)
             prompt = (
                 "Given CSV headers, map them to keys: date, kWh, site.\n"
                 f"Headers: {headers}\n"
@@ -40,10 +40,19 @@ def suggest_mapping_llm(headers: List[str]) -> Dict[str, str]:
     else:
         try:
             import boto3  # type: ignore
+            from botocore.config import Config as BotocoreConfig  # type: ignore
             import json
             if not settings.BEDROCK_REGION:
                 return {}
-            br = boto3.client("bedrock-runtime", region_name=settings.BEDROCK_REGION)
+            br = boto3.client(
+                "bedrock-runtime",
+                region_name=settings.BEDROCK_REGION,
+                config=BotocoreConfig(
+                    read_timeout=settings.LLM_TIMEOUT_SECONDS,
+                    connect_timeout=settings.LLM_TIMEOUT_SECONDS,
+                    retries={"max_attempts": 1},
+                ),
+            )
             prompt = (
                 "Given CSV headers, map them to keys: date, kWh, site.\n"
                 f"Headers: {headers}\n"
@@ -77,7 +86,7 @@ def compliance_explain_llm(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             if not settings.OPENAI_API_KEY:
                 return None
             os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
-            client = OpenAI()
+            client = OpenAI(timeout=settings.LLM_TIMEOUT_SECONDS)
             prompt = (
                 "You are an ESG compliance assistant. Given a rule code and context, "
                 "produce 3-6 concise bullets and a checklist of data to collect. "
@@ -90,10 +99,19 @@ def compliance_explain_llm(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             return json.loads(r.output_text)  # type: ignore[attr-defined]
         else:
             import boto3  # type: ignore
+            from botocore.config import Config as BotocoreConfig  # type: ignore
             import json
             if not settings.BEDROCK_REGION:
                 return None
-            br = boto3.client("bedrock-runtime", region_name=settings.BEDROCK_REGION)
+            br = boto3.client(
+                "bedrock-runtime",
+                region_name=settings.BEDROCK_REGION,
+                config=BotocoreConfig(
+                    read_timeout=settings.LLM_TIMEOUT_SECONDS,
+                    connect_timeout=settings.LLM_TIMEOUT_SECONDS,
+                    retries={"max_attempts": 1},
+                ),
+            )
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 400,
@@ -138,7 +156,7 @@ def narrative_llm(payload: Dict[str, Any]) -> Optional[str]:
             if not settings.OPENAI_API_KEY:
                 return None
             os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
-            client = OpenAI()
+            client = OpenAI(timeout=settings.LLM_TIMEOUT_SECONDS)
             prompt = (
                 "Write a 120–180 word ESG report section. "
                 "Facts only, no PASS/FAIL. Include the factor token exactly as provided.\n"
@@ -149,10 +167,19 @@ def narrative_llm(payload: Dict[str, Any]) -> Optional[str]:
             return r.output_text.strip()  # type: ignore[attr-defined]
         else:
             import boto3  # type: ignore
+            from botocore.config import Config as BotocoreConfig  # type: ignore
             if not settings.BEDROCK_REGION:
                 return None
             import json as _json
-            br = boto3.client("bedrock-runtime", region_name=settings.BEDROCK_REGION)
+            br = boto3.client(
+                "bedrock-runtime",
+                region_name=settings.BEDROCK_REGION,
+                config=BotocoreConfig(
+                    read_timeout=settings.LLM_TIMEOUT_SECONDS,
+                    connect_timeout=settings.LLM_TIMEOUT_SECONDS,
+                    retries={"max_attempts": 1},
+                ),
+            )
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 450,
