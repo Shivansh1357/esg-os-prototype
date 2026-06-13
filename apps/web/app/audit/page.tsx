@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DataTableShell, PageHeader, SectionCard } from '@/components/product'
 
 type AuditEvent = {
@@ -90,7 +91,17 @@ export default function AuditPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(q.data ?? []).filter((x) => eventType === 'ALL' || x.category === eventType).map((e) => (
+              {q.isPending &&
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={`skeleton-${i}`} aria-hidden="true">
+                    {Array.from({ length: 6 }).map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              {!q.isPending && (q.data ?? []).filter((x) => eventType === 'ALL' || x.category === eventType).map((e) => (
                 <TableRow key={`${e.category}-${e.id}`} className={isFrozenSnapshotEvent(e) ? 'bg-success/10' : undefined}>
                   <TableCell>{new Date(e.at).toLocaleString()}</TableCell>
                   <TableCell>{e.category}</TableCell>
@@ -102,7 +113,7 @@ export default function AuditPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {(!q.data || q.data.length === 0) && (
+              {!q.isPending && (!q.data || q.data.length === 0) && (
                 <TableRow>
                   <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No events for selected period.</TableCell>
                 </TableRow>

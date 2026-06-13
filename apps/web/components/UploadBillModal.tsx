@@ -204,16 +204,16 @@ export default function UploadBillModal({ onUploaded, ...btn }: Props) {
 
   async function confirmUpsert() {
     if (!preview.length) return
-    setStage('confirm')
 
-    // Keep prompt fallback for e2e compatibility while allowing typed input.
-    const fallbackPrompt = typeof window !== 'undefined' ? (window.prompt('Enter Entity ID to assign facts to:') || '') : ''
-    const resolvedEntityId = (entityId || fallbackPrompt).trim()
+    // Entity ID is captured via the in-modal input field (see StagePanel).
+    const resolvedEntityId = entityId.trim()
     if (!resolvedEntityId) {
       toast.error('Entity ID required.')
       setStage('mapping')
       return
     }
+
+    setStage('confirm')
 
     let ok = 0
     for (const row of preview) {
@@ -278,8 +278,10 @@ function StagePanel({ stage, preview, mapResp, selected, setSelected, entityId, 
     return (
       <div className="space-y-3">
         <div className="space-y-2">
-          <Label>Entity ID</Label>
+          <Label htmlFor="upload-entity-id">Entity ID</Label>
           <Input
+            id="upload-entity-id"
+            data-test="upload-entity-id"
             placeholder="paste entity UUID"
             value={entityId}
             onChange={(e) => setEntityId(e.target.value)}

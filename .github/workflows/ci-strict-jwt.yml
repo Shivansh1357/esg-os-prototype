@@ -8,6 +8,31 @@ on:
       - master
 
 jobs:
+  ai-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Tesseract OCR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-hin
+
+      - name: Install AI dependencies
+        working-directory: apps/ai
+        run: pip install -r requirements.txt
+
+      - name: Run AI tests
+        working-directory: apps/ai
+        run: pytest -q
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 45

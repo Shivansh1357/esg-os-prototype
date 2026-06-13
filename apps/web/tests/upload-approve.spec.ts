@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer';
-import type { APIRequestContext, Dialog, Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 
 type UploadApproveFixtures = {
@@ -32,7 +32,7 @@ test('upload -> mapping -> save drafts -> approve', async ({ page, authedRequest
   await page.getByTestId('upload-bill-start-btn').click();
   await expect(page.getByTestId('parse-preview')).toBeVisible({ timeout: 15000 });
 
-  page.once('dialog', async (dialog: Dialog) => { await dialog.accept('00000000-0000-0000-0000-000000000001'); });
+  await page.getByTestId('upload-entity-id').fill('00000000-0000-0000-0000-000000000001');
   await page.getByTestId('mapping-accept').click();
   await page.getByRole('button', { name: 'Close' }).click();
 
