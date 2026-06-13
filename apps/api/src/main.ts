@@ -3,20 +3,35 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { initErrorTracking, captureException } from './observability/error-tracking';
 
-// Fail fast in production if security-critical secrets are missing, rather than
-// crashing later with an opaque runtime error on the first request that needs them.
+// Validate environment at boot so misconfiguration surfaces immediately rather
+// than as an opaque 500 on the first request that needs a secret.
+//
+// Hard requirements (fatal in production): the API cannot serve any request
+// without them. Soft requirements (warn only): individual features degrade if
+// missing, but the service still boots — so we never block a deploy on them.
 function validateEnv() {
   const isProd = process.env.NODE_ENV === 'production';
   const authMode = (process.env.AUTH_MODE || 'hybrid').toLowerCase();
 
-  const required: string[] = ['DATABASE_URL'];
-  if (authMode === 'jwt' || isProd) required.push('JWT_SECRET');
-  if (isProd) required.push('SUPPLIER_TOKEN_SECRET', 'AUDITOR_TOKEN_SECRET');
+  const hardRequired: string[] = ['DATABASE_URL'];
+  if (authMode === 'jwt' || isProd) hardRequired.push('JWT_SECRET');
 
-  const missing = required.filter((k) => !process.env[k]);
-  if (missing.length === 0) return;
+  // Feature-scoped secrets: missing them only breaks supplier/auditor public
+  // token signing, so warn rather than crash the whole service.
+  const softRequired = ['SUPPLIER_TOKEN_SECRET', 'AUDITOR_TOKEN_SECRET'];
 
-  const message = `Missing required environment variables: ${missing.join(', ')}`;
+  const missingHard = hardRequired.filter((k) => !process.env[k]);
+  const missingSoft = softRequired.filter((k) => !process.env[k]);
+
+  if (missingSoft.length > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[startup] Missing optional env (related features will be unavailable): ${missingSoft.join(', ')}`,
+    );
+  }
+
+  if (missingHard.length === 0) return;
+  const message = `Missing required environment variables: ${missingHard.join(', ')}`;
   if (isProd) throw new Error(message);
   // eslint-disable-next-line no-console
   console.warn(`[startup] ${message} (non-fatal outside production)`);
