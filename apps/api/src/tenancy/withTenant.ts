@@ -17,12 +17,16 @@ export class WithTenantMiddleware implements NestMiddleware, OnModuleDestroy {
       return;
     }
 
-    const authMode = (process.env.AUTH_MODE || 'hybrid').toLowerCase();
+    // Fail-closed by default in production (jwt: identity comes only from a
+    // verified token). Dev/test default to hybrid for convenience. An explicit
+    // AUTH_MODE always wins.
+    const authMode = (process.env.AUTH_MODE || (process.env.NODE_ENV === 'production' ? 'jwt' : 'hybrid')).toLowerCase();
     const allowHeaderFallback = authMode === 'header' || authMode === 'hybrid';
 
     const tenantId = (req.user?.tenantId ?? (allowHeaderFallback ? req.headers['x-tenant-id'] : undefined)) as string;
     const userId = (req.user?.sub ?? (allowHeaderFallback ? req.headers['x-user-id'] : undefined)) as string;
-    const rawRole = String(req.user?.role ?? (allowHeaderFallback ? req.headers['x-role'] : undefined) ?? 'ADMIN').toUpperCase();
+    // No implicit ADMIN: an absent role is rejected below rather than escalated.
+    const rawRole = String(req.user?.role ?? (allowHeaderFallback ? req.headers['x-role'] : undefined) ?? '').toUpperCase();
 
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (tenantId && !uuidRegex.test(tenantId)) {

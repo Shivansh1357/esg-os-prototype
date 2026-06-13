@@ -11,7 +11,7 @@ import { initErrorTracking, captureException } from './observability/error-track
 // missing, but the service still boots — so we never block a deploy on them.
 function validateEnv() {
   const isProd = process.env.NODE_ENV === 'production';
-  const authMode = (process.env.AUTH_MODE || 'hybrid').toLowerCase();
+  const authMode = (process.env.AUTH_MODE || (isProd ? 'jwt' : 'hybrid')).toLowerCase();
 
   const hardRequired: string[] = ['DATABASE_URL'];
   if (authMode === 'jwt' || isProd) hardRequired.push('JWT_SECRET');
