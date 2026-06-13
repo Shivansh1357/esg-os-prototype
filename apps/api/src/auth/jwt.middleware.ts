@@ -18,7 +18,7 @@ export class JwtAuthMiddleware implements NestMiddleware {
       return;
     }
 
-    const mode = (process.env.AUTH_MODE || 'hybrid').toLowerCase();
+    const mode = (process.env.AUTH_MODE || (process.env.NODE_ENV === 'production' ? 'jwt' : 'hybrid')).toLowerCase();
     const auth = String(req.headers?.authorization || '');
     const hasBearer = auth.startsWith('Bearer ');
 

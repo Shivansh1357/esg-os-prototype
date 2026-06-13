@@ -86,17 +86,15 @@ Each merged PR also passed CI `test` (API + Playwright E2E) and `deploy-smoke`.
 
 Ordered by value-to-risk. P0 = before a paid customer; P1 = before scale; P2 = polish.
 
-### P0 — auth hardening follow-ups (from the security review)
-- **Default `AUTH_MODE` to `jwt` (fail-closed).** The default is currently `hybrid`,
-  which trusts client `x-tenant-id`/`x-user-id`/`x-role` headers when no bearer token is
-  present — a header-spoofing path that undermines login. Production must run `AUTH_MODE=jwt`
-  (CI/smoke already do). Flipping the *default* is a behavioral change for local dev and
-  warrants its own change + dev-workflow update; do it before any non-jwt deployment.
-- **Stop defaulting an unknown role to `ADMIN`** in `withTenant.ts` — default to least
-  privilege (moot under `jwt` mode, but fail-open under header mode).
+### P0 — auth hardening
+- ✅ **DONE (PR #9) — Fail-closed auth in production.** `AUTH_MODE` now defaults to `jwt`
+  when `NODE_ENV=production` (dev/test stay `hybrid` for convenience; an explicit
+  `AUTH_MODE` always wins). Verified: in prod mode a request with spoofed
+  `x-tenant-id`/`x-role` but no bearer is rejected with 401. Also removed the implicit
+  `ADMIN` fallback for an absent role (now rejected, not escalated).
 - **Never bake `NEXT_PUBLIC_TENANT_ID`/`NEXT_PUBLIC_AUTH_TOKEN` into a production build** —
   the dev/E2E env fallback would otherwise ship an ADMIN session and disable the guard.
-  Add a CI/build check.
+  Add a CI/build check. (Operational, not code.)
 - **Move the session token to an httpOnly cookie** (currently localStorage — XSS-exposed,
   an accepted MVP tradeoff). Add per-user self-service password change + an audit log of
   admin password resets.
