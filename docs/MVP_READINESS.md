@@ -38,63 +38,64 @@ the foundational architecture.
 
 ---
 
-## 2. Fixes applied in this pass
+## 2. Fixes applied (shipped)
 
-All changes verified against the green test suite + web build.
+All changes were verified against the live test suite + web build before merge.
+Each merged PR also passed CI `test` (API + Playwright E2E) and `deploy-smoke`.
 
-1. **Authz gap on executive endpoints** (`apps/api/src/exec/exec.controller.ts`)
-   `/exec/summary` and `/exec/:reportId` relied on RLS alone with no role check.
-   Added `requireRole('ADMIN','MEMBER','AUDITOR')` (excludes SUPPLIER) + rate limiting,
-   matching every other controller.
+**PR #3 — API authz/bootstrap hardening + web error boundaries**
+- Closed the authz gap on `/exec/*` (relied on RLS alone) — added
+  `requireRole('ADMIN','MEMBER','AUDITOR')` + rate limiting.
+- Fail-fast env validation at boot (throws in prod on missing `DATABASE_URL`/`JWT_SECRET`;
+  warns on optional token secrets so a deploy is never blocked by them).
+- Configurable CORS via `CORS_ORIGINS` (was hard-coded to localhost).
+- Global error boundaries (`app/error.tsx`, `app/global-error.tsx`).
 
-2. **Fail-fast env validation** (`apps/api/src/main.ts`)
-   Bootstrap now validates required secrets (`DATABASE_URL`, `JWT_SECRET` in jwt mode,
-   token secrets in production). Throws in production, warns in dev/test — so missing
-   config surfaces at startup instead of as an opaque 500 on first use.
+**PR #4 — wired the three stub admin screens + LLM timeouts**
+- New REST controllers (RLS-scoped, parameterized, role-gated): `GET/POST /entities`,
+  `GET /users` + `POST /users/invite`, `GET/PUT /settings`; migration `240_tenant_settings`.
+- Onboarding/Users/Entities pages now persist via TanStack Query (was local-only state
+  that lost data on refresh). Verified end-to-end against a live DB incl. RLS + authz.
+- `LLM_TIMEOUT_SECONDS` (default 15s) on the OpenAI + Bedrock clients.
 
-3. **Configurable CORS** (`apps/api/src/main.ts`)
-   Origin list now reads `CORS_ORIGINS` (comma-separated), defaulting to localhost.
-   Previously hard-coded to `http://localhost:5050` — unusable in production.
-
-4. **Global error boundaries** (`apps/web/app/error.tsx`, `global-error.tsx`)
-   The app had no error boundary, so any render error blanked the screen. Added an
-   on-brand route-level boundary with retry + a root-level fallback.
+**PR #5 — UX polish + AI tests in CI**
+- Functional header search (route/command palette, keyboard + ARIA); table loading
+  skeletons on data/suppliers/audit; replaced `window.prompt` for Entity ID with an
+  in-modal input (E2E updated accordingly).
+- New `ai-test` CI job (Tesseract + `pytest`) — the AI service is now exercised in CI
+  for the first time (`apps/ai/pytest.ini` + `conftest.py` make `import app` resolve
+  under the bare `pytest` console script).
 
 ---
 
-## 3. Prioritized backlog (not yet done)
+## 3. Prioritized backlog (remaining)
 
 Ordered by value-to-risk. P0 = before a paid customer; P1 = before scale; P2 = polish.
 
-### P0 — correctness & trust
-- **Wire the stub admin screens.** Onboarding (`/onboarding`), Users (`/admin/users`),
-  and Entities (`/admin/entities`) show success toasts but don't persist. Either wire
-  to real endpoints or clearly mark as "demo" so users don't lose work.
+### P0 — the main remaining gap
 - **Real authentication & login.** Today tenant/user/role come from a signed JWT
-  (good) but there's no login UI or token issuance flow in the app itself. Add a
-  login page + session handling; stop relying on `NEXT_PUBLIC_*` identity in the client.
-- **LLM call timeouts** (`apps/ai/app/utils/llm.py`). OpenAI/Bedrock calls have no
-  timeout; a hung provider hangs the request. Add a configurable timeout + fallback.
-- **Notification idempotency** (`sql/.../210_notifications.sql` + scheduled worker).
-  Scheduled-report retries can insert duplicate notifications — add a uniqueness key.
+  (which is sound), but there is no login UI or token-issuance flow in the app — the
+  web client reads identity from `NEXT_PUBLIC_*` env vars. This is the #1 GTM blocker
+  and deserves a dedicated, carefully-tested effort: a credential/SSO login, server-side
+  token issuance, session/refresh handling, and removing client-embedded identity.
+  Intentionally not rushed in this pass to avoid introducing security regressions.
 
 ### P1 — scale & operability
-- **Fact hot-path indexes.** Add indexes for outlier detection and compliance eval
-  (`facts(tenant_id, metric_code)`, `facts(tenant_id, status, metric_code)`).
-- **Worker transaction boundaries** (`jobs/worker/src/tasks/report.scheduled.ts`).
-  Uses two connections; a failure between them leaves schedules stale. Make it one
-  transaction or idempotent on a schedule key.
-- **CI breadth.** Add `pytest` (AI) and an AI service container to CI; the AI service
-  is currently untested in the pipeline. Add a freeze-then-recalc immutability test
-  and an S3/MinIO round-trip evidence test.
-- **`get_report_export_payload` definition** is touched by two migrations (110, 150).
-  Confirm the final signature is the intended one and consolidate to avoid drift.
+- **Notification idempotency / worker transaction boundaries**
+  (`jobs/worker/src/tasks/report.scheduled.ts` + `210_notifications.sql`). A whole-job
+  retry can re-call the export endpoint and insert duplicate notifications, and the
+  schedule update + notification span two connections. Needs a dedup key + single
+  transaction. Deferred here because the worker has no test harness yet — should land
+  together with a worker test rather than as an unverified change.
+- **Deeper test coverage.** Add a freeze-then-recalc immutability test and an S3/MinIO
+  round-trip evidence test; add an AI service container to the smoke compose.
+- **`get_report_export_payload`** is (re)defined across migrations 110/150 — confirm the
+  final signature is intended and consolidate to avoid drift.
 
-### P2 — UX polish & accessibility
-- Accessibility pass: ARIA labels on tables/modals/buttons, focus management, contrast.
-- Replace the `window.prompt()` for Entity ID in `UploadBillModal` with an in-dialog field.
-- Loading skeletons on data tables; consistent inline error states; either implement or
-  remove the non-functional header search box.
+### P2 — polish
+- Broader accessibility pass (focus management, contrast audit) beyond the icon-label
+  and dialog-title fixes already in place.
+- Consistent inline error states across all data tables; reusable pagination.
 
 ---
 
