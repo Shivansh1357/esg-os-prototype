@@ -28,3 +28,4 @@
 230_data_retention 2026-04-19T00:00:00Z ESG OS <dev@esg-os.local> # retention: configurable data retention policies + cleanup function
 240_tenant_settings 2026-06-13T00:00:00Z ESG OS <dev@esg-os.local> # settings: per-tenant onboarding/reporting settings + RLS
 250_auth_login 2026-06-13T00:00:00Z ESG OS <dev@esg-os.local> # auth: password_hash + verify_login (login endpoint)
+260_notification_dedup 2026-06-13T00:00:00Z ESG OS <dev@esg-os.local> # notifications: dedup_key + partial unique index (idempotent worker inserts)
