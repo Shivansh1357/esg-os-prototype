@@ -1,5 +1,6 @@
 import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
+import { isPublicPath } from './publicPaths';
 
 type JwtClaims = {
   tenantId?: string;
@@ -12,8 +13,7 @@ type JwtClaims = {
 @Injectable()
 export class JwtAuthMiddleware implements NestMiddleware {
   use(req: any, _res: any, next: () => void) {
-    const pathProbe = `${String(req.originalUrl || '')} ${String(req.url || '')} ${String(req.path || '')}`;
-    if (pathProbe.includes('/health') || pathProbe.includes('/metrics') || pathProbe.includes('/s/') || pathProbe.includes('/public/')) {
+    if (isPublicPath(req)) {
       next();
       return;
     }
@@ -42,7 +42,7 @@ export class JwtAuthMiddleware implements NestMiddleware {
     }
 
     try {
-      const decoded = jwt.verify(token, secret) as JwtClaims;
+      const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] }) as JwtClaims;
       const tenantId = decoded.tenantId || decoded.tid;
       const userId = decoded.sub || decoded.userId;
       const role = String(decoded.role || 'MEMBER').toUpperCase();

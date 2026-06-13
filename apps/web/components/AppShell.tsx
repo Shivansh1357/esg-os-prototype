@@ -2,13 +2,14 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { ChevronRight, Menu, Search } from "lucide-react"
+import { ChevronRight, LogOut, Menu, Search } from "lucide-react"
 import AppNav, { NAV_ITEMS } from "@/components/AppNav"
 import ThemeToggle from "@/components/theme-toggle"
 import { AiStatusIndicator } from "@/components/product"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { clearSession, hasStoredSession } from "@/lib/session"
 import {
   Sheet,
   SheetContent,
@@ -22,6 +23,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const crumb = useMemo(() => {
     return NAV_ITEMS.find((item) => pathname.startsWith(item.href))?.label ?? "Dashboard"
   }, [pathname])
+
+  const router = useRouter()
+  // localStorage is only available after mount; gating on this avoids a
+  // hydration mismatch and keeps the env-only (E2E/dev) header visually unchanged.
+  const [showLogout, setShowLogout] = useState(false)
+  useEffect(() => {
+    setShowLogout(hasStoredSession())
+  }, [pathname])
+
+  function handleLogout() {
+    clearSession()
+    setShowLogout(false)
+    router.push("/login")
+  }
 
   return (
     <div className="relative min-h-screen">
@@ -79,6 +94,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-3">
                 <AiStatusIndicator />
                 <ThemeToggle />
+                {showLogout ? (
+                  <Button
+                    data-test="logout-btn"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={handleLogout}
+                    title="Log out"
+                  >
+                    <LogOut className="size-4" />
+                    <span className="sr-only">Log out</span>
+                  </Button>
+                ) : null}
               </div>
             </div>
           </header>

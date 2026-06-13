@@ -20,8 +20,9 @@ import { NotificationsController } from './notifications/notifications.controlle
 import { EntitiesController } from './entities/entities.controller';
 import { UsersController } from './users/users.controller';
 import { SettingsController } from './settings/settings.controller';
+import { AuthController } from './auth/auth.controller';
 
-@Module({ imports: [GraphModule], controllers: [UploadController, ReportsController, SuppliersController, PublicController, AuditorController, AuditorPublicController, ExecController, HealthController, AuditController, ActivityController, MetricsController, PilotController, FeedbackController, NotificationsController, EntitiesController, UsersController, SettingsController] })
+@Module({ imports: [GraphModule], controllers: [UploadController, ReportsController, SuppliersController, PublicController, AuditorController, AuditorPublicController, ExecController, HealthController, AuditController, ActivityController, MetricsController, PilotController, FeedbackController, NotificationsController, EntitiesController, UsersController, SettingsController, AuthController] })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(RequestContextMiddleware, JwtAuthMiddleware, WithTenantMiddleware).forRoutes('*');

@@ -1,13 +1,20 @@
 import { getClientRole } from '@/lib/role'
+import { getSession } from '@/lib/session'
 
 const API = process.env.NEXT_PUBLIC_API_URL!;
-const headers = () => ({
-  'Content-Type': 'application/json',
-  ...(process.env.NEXT_PUBLIC_AUTH_TOKEN ? { Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}` } : {}),
-  'x-tenant-id': process.env.NEXT_PUBLIC_TENANT_ID!,
-  'x-user-id': process.env.NEXT_PUBLIC_USER_ID!,
-  'x-role': getClientRole(),
-});
+const headers = () => {
+  const session = getSession();
+  // getClientRole() already prefers a stored session's role when present, and
+  // otherwise applies the unchanged env/?mode= logic — so this stays
+  // byte-for-byte identical for the env-only (E2E/dev) path.
+  return {
+    'Content-Type': 'application/json',
+    ...(session.token ? { Authorization: `Bearer ${session.token}` } : {}),
+    'x-tenant-id': session.tenantId,
+    'x-user-id': session.userId,
+    'x-role': getClientRole(),
+  };
+};
 
 export async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   const r = await fetch(`${API}/graphql`, {

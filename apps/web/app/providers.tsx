@@ -6,6 +6,7 @@ import { ReportContextProvider } from "./report-context"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
+import AuthGuard from "@/components/AuthGuard"
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [qc] = useState(() => new QueryClient())
@@ -14,7 +15,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={qc}>
         <TooltipProvider delayDuration={120}>
           <ReportContextProvider>
-            {children}
+            <AuthGuard>{children}</AuthGuard>
             <Toaster />
           </ReportContextProvider>
         </TooltipProvider>

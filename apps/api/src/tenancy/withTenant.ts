@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware, OnModuleDestroy } from '@nestjs/common';
 import { ALS, TenantContext } from './als';
 import { Pool } from 'pg';
+import { isPublicPath } from '../auth/publicPaths';
 
 @Injectable()
 export class WithTenantMiddleware implements NestMiddleware, OnModuleDestroy {
@@ -11,8 +12,7 @@ export class WithTenantMiddleware implements NestMiddleware, OnModuleDestroy {
   }
 
   async use(req: any, res: any, next: () => void) {
-    const pathProbe = `${String(req.originalUrl || '')} ${String(req.url || '')} ${String(req.path || '')}`;
-    if (pathProbe.includes('/health') || pathProbe.includes('/metrics') || pathProbe.includes('/s/') || pathProbe.includes('/public/')) {
+    if (isPublicPath(req)) {
       next();
       return;
     }
