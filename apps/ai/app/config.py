@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     BEDROCK_REGION: Optional[str] = None
     MAP_LOW_CONF_THRESHOLD: float = 0.55
+    # Hard ceiling (seconds) on any single LLM call so a hung provider cannot
+    # stall a request indefinitely. Applies to OpenAI and Bedrock clients.
+    LLM_TIMEOUT_SECONDS: float = 15.0
 
     if SettingsConfigDict is not None:
         model_config = SettingsConfigDict(env_file=".env")
