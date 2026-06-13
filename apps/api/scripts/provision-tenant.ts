@@ -6,6 +6,7 @@ type RolePreset = 'admin' | 'member' | 'auditor';
 async function main() {
   const tenantName = readArg('name', `Pilot Tenant ${Date.now()}`)!;
   const rolePreset = (readArg('role', 'admin') || 'admin').toLowerCase() as RolePreset;
+  const loginPassword = readArg('password', 'esgdemo123')!;
   const presets = rolePreset.split(',').map((x) => x.trim()).filter(Boolean) as RolePreset[];
   const selected = new Set<RolePreset>(['admin', ...presets]);
   const q = quarterRange();
@@ -19,11 +20,11 @@ async function main() {
       );
       const tenantId = tenant.rows[0].id as string;
 
-      const adminUser = await createUser(client, tenantId, 'ADMIN', `admin+${Date.now()}@pilot.local`);
+      const adminUser = await createUser(client, tenantId, 'ADMIN', `admin+${Date.now()}@pilot.local`, loginPassword);
       let memberUser: { id: string; email: string } | null = null;
       let auditorUser: { id: string; email: string } | null = null;
-      if (selected.has('member')) memberUser = await createUser(client, tenantId, 'MEMBER', `member+${Date.now()}@pilot.local`);
-      if (selected.has('auditor')) auditorUser = await createUser(client, tenantId, 'AUDITOR', `auditor+${Date.now()}@pilot.local`);
+      if (selected.has('member')) memberUser = await createUser(client, tenantId, 'MEMBER', `member+${Date.now()}@pilot.local`, loginPassword);
+      if (selected.has('auditor')) auditorUser = await createUser(client, tenantId, 'AUDITOR', `auditor+${Date.now()}@pilot.local`, loginPassword);
 
       const org = await client.query(
         `INSERT INTO esg.entities(tenant_id,name,etype) VALUES ($1,$2,'ORG') RETURNING id`,
@@ -66,6 +67,7 @@ async function main() {
   console.log(`entityId=${output.entityId}`);
   console.log(`factorSetId=${output.factorSetId}`);
   console.log(`admin.email=${output.adminUser.email}`);
+  console.log(`login.password=${loginPassword}`);
   console.log(`admin.jwt=${output.adminToken}`);
   if (output.memberUser) console.log(`member.email=${output.memberUser.email}`);
   if (output.auditorUser) console.log(`auditor.email=${output.auditorUser.email}`);
@@ -73,10 +75,11 @@ async function main() {
   console.log(`Authorization: Bearer ${output.adminToken}`);
 }
 
-async function createUser(client: any, tenantId: string, role: 'ADMIN'|'MEMBER'|'AUDITOR', email: string) {
+async function createUser(client: any, tenantId: string, role: 'ADMIN'|'MEMBER'|'AUDITOR', email: string, password: string) {
   const r = await client.query(
-    `INSERT INTO esg.users(tenant_id,email,role,status) VALUES ($1,$2,$3,'ACTIVE') RETURNING id,email`,
-    [tenantId, email, role]
+    `INSERT INTO esg.users(tenant_id,email,role,status,password_hash)
+     VALUES ($1,$2,$3,'ACTIVE', crypt($4, gen_salt('bf'))) RETURNING id,email`,
+    [tenantId, email, role, password]
   );
   return { id: r.rows[0].id as string, email: r.rows[0].email as string };
 }

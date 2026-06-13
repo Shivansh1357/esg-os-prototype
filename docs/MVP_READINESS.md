@@ -66,19 +66,40 @@ Each merged PR also passed CI `test` (API + Playwright E2E) and `deploy-smoke`.
   for the first time (`apps/ai/pytest.ini` + `conftest.py` make `import app` resolve
   under the bare `pytest` console script).
 
+**PR #7 — real authentication & login**
+- `POST /auth/login` (public) verifies credentials via `auth.verify_login` (a pgcrypto
+  bcrypt check in a SECURITY DEFINER function that resolves email→tenant without a tenant
+  context, returning a row only on a correct password) and issues an HS256 JWT.
+- `POST /auth/set-password` (authenticated, ADMIN, tenant-confined via RLS).
+- Web login page + `lib/session.ts` (localStorage session with env fallback so E2E/dev
+  are byte-for-byte unchanged), an `AuthGuard` that redirects unauthenticated users to
+  `/login`, and a logout control. Migration `250_auth_login` adds `users.password_hash`.
+- Hardened the public-path middleware bypass from loose substring matching to
+  exact/prefix path matching (closes a `?x=/auth/login` query-smuggle vector) and pinned
+  `jwt.verify` to `HS256`. `provision:tenant` now seeds a login password.
+- Verified: API suite 28/28 (incl. a login + a bypass-smuggle regression test); a security
+  review pass informed the bypass + algorithm-pinning fixes.
+
 ---
 
 ## 3. Prioritized backlog (remaining)
 
 Ordered by value-to-risk. P0 = before a paid customer; P1 = before scale; P2 = polish.
 
-### P0 — the main remaining gap
-- **Real authentication & login.** Today tenant/user/role come from a signed JWT
-  (which is sound), but there is no login UI or token-issuance flow in the app — the
-  web client reads identity from `NEXT_PUBLIC_*` env vars. This is the #1 GTM blocker
-  and deserves a dedicated, carefully-tested effort: a credential/SSO login, server-side
-  token issuance, session/refresh handling, and removing client-embedded identity.
-  Intentionally not rushed in this pass to avoid introducing security regressions.
+### P0 — auth hardening follow-ups (from the security review)
+- **Default `AUTH_MODE` to `jwt` (fail-closed).** The default is currently `hybrid`,
+  which trusts client `x-tenant-id`/`x-user-id`/`x-role` headers when no bearer token is
+  present — a header-spoofing path that undermines login. Production must run `AUTH_MODE=jwt`
+  (CI/smoke already do). Flipping the *default* is a behavioral change for local dev and
+  warrants its own change + dev-workflow update; do it before any non-jwt deployment.
+- **Stop defaulting an unknown role to `ADMIN`** in `withTenant.ts` — default to least
+  privilege (moot under `jwt` mode, but fail-open under header mode).
+- **Never bake `NEXT_PUBLIC_TENANT_ID`/`NEXT_PUBLIC_AUTH_TOKEN` into a production build** —
+  the dev/E2E env fallback would otherwise ship an ADMIN session and disable the guard.
+  Add a CI/build check.
+- **Move the session token to an httpOnly cookie** (currently localStorage — XSS-exposed,
+  an accepted MVP tradeoff). Add per-user self-service password change + an audit log of
+  admin password resets.
 
 ### P1 — scale & operability
 - **Notification idempotency / worker transaction boundaries**
